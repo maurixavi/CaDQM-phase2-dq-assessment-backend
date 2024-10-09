@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'coreapi',
     'dataqualitymodel',
     'contextmodel',
-    'project'
+    'project',
+    'dqmodel'
 ]
 
 MIDDLEWARE = [

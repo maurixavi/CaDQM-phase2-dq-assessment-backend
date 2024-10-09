@@ -22,4 +22,5 @@ urlpatterns = [
     path('api/', include('dataqualitymodel.urls')),
     path('api/', include('contextmodel.urls')),
     path('api/', include('project.urls')),
+    path('api/v0/', include('dqmodel.urls')),
 ]

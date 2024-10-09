@@ -19,5 +19,5 @@ router.register(r'other-data', views.OtherDataViewSet)
 
 
 urlpatterns = [
-    path("context/", include(router.urls)),
+    path("", include(router.urls)),
 ]
