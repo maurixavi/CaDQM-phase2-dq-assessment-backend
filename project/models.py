@@ -1,5 +1,5 @@
 from django.db import models
-from dataqualitymodel.models import DQModel
+from dqmodel.models import DQModel
 from contextmodel.models import ContextModel
 
 class Project(models.Model):
@@ -14,7 +14,7 @@ class Project(models.Model):
         ('in_progress', 'In Progress'),
         ('done', 'Done'),
     ]
-    stage = models.IntegerField(default=0)
+    stage = models.IntegerField(default=1)
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
