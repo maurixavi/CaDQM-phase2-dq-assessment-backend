@@ -34,6 +34,8 @@ class DQModel(models.Model):
     def __str__(self):
         return self.version
 
+
+    #evitar que se cambie el estado de un DQModel ya finalizado.
     def save(self, *args, **kwargs):
         # Obtener el estado anterior si el objeto ya existe
         if self.pk:

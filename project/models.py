@@ -1,6 +1,7 @@
 from django.db import models
 from dqmodel.models import DQModel
 from contextmodel.models import ContextModel
+from django.core.exceptions import ValidationError
 
 class Project(models.Model):
     name = models.CharField(max_length=100)
@@ -26,3 +27,13 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        if self.pk: # proyecto ya existe
+            # Obtener la instancia original desde la base de datos
+            original = Project.objects.get(pk=self.pk)
+            if original.dqmodel_version != self.dqmodel_version:
+                raise ValidationError("No se puede cambiar 'dqmodel_version' una vez asignado.")
+            if original.context_version != self.context_version:
+                raise ValidationError("No se puede cambiar 'context_version' una vez asignado.")
+        super().save(*args, **kwargs)
