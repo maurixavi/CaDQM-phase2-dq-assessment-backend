@@ -99,14 +99,11 @@ class DQModelDimensionSerializer(serializers.ModelSerializer):
     dimension_name = serializers.CharField(source='dimension_base.name', read_only=True)
 
     factors = DQModelFactorSerializer(many=True, required=False, allow_empty=True)
+    
 
     class Meta:
         model = DQModelDimension
-        fields = ['id', 'dimension_base', 'dimension_name', 'factors']
-
-
-
-
+        fields = ['id', 'dimension_base', 'dimension_name', 'factors', 'context_components']
 
 
 

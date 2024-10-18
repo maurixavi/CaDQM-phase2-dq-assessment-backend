@@ -1,8 +1,8 @@
-# dqmodel/models.py
-
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+# from django.contrib.postgres.fields import JSONField  # Django 2.1 y versiones anteriores
+from django.db.models import JSONField  # Django 3.1 y versiones posteriores
 
 
 class DQModel(models.Model):
@@ -120,6 +120,19 @@ class DQModelDimension(models.Model):
     dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='model_dimensions')
     dimension_base = models.ForeignKey(DQDimensionBase, on_delete=models.CASCADE, related_name='model_dimensions')
 
+    context_components = models.JSONField(default=list, blank=True)
+    """
+        context_components": [
+        {
+            "context_components" : [context_component_id]
+            "app_domain": [1],
+            "business_rules": [1, 2, 4],
+            "user_types": [44, 55],
+            ...
+        
+    """
+
+
     def __str__(self):
         return f"{self.dimension_base.name} en {self.dq_model.version}"
 
@@ -166,8 +179,8 @@ class DQModelMetric(models.Model):
         on_delete=models.CASCADE, 
         related_name='metrics',
         editable=False  # Hacemos el campo no editable
-    )
-
+    )    
+    
     def __str__(self):
         return f"{self.metric_base.name} en {self.dq_model.version} bajo {self.factor.factor_base.name}"
 
