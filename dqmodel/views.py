@@ -1,6 +1,10 @@
 from django.shortcuts import render
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
 from django.db import transaction
+
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -32,20 +36,34 @@ from .serializer import (
 )
 
 # ViewSet para DQDimensionBase
-class DQDimensionBaseViewSet(viewsets.ReadOnlyModelViewSet):
+#class DQDimensionBaseViewSet(viewsets.ReadOnlyModelViewSet):
+class DQDimensionBaseViewSet(viewsets.ModelViewSet):
     queryset = DQDimensionBase.objects.all()
     serializer_class = DQDimensionBaseSerializer
 
 # ViewSet para DQFactorBase
-class DQFactorBaseViewSet(viewsets.ReadOnlyModelViewSet):
+#class DQFactorBaseViewSet(viewsets.ReadOnlyModelViewSet):
+class DQFactorBaseViewSet(viewsets.ModelViewSet):
     queryset = DQFactorBase.objects.all()
     serializer_class = DQFactorBaseSerializer
+    
+    @action(detail=True, methods=['get'], url_path='factors-base')
+    def get_factors_by_dimension(self, request, pk=None):
+        # Filtrar factores basados en el dimension_id
+        factors = self.queryset.filter(facetOf_id=pk)
+        if factors.exists():
+            serializer = self.get_serializer(factors, many=True)
+            return Response(serializer.data)
+        return Response({"detail": "No factors found for this dimension"}, status=status.HTTP_404_NOT_FOUND)
+    
 
 # ViewSet para DQMetricBase
 class DQMetricBaseViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DQMetricBase.objects.all()
     serializer_class = DQMetricBaseSerializer
-
+    
+    
+    
 # ViewSet para DQMethodBase
 class DQMethodBaseViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DQMethodBase.objects.all()
@@ -83,6 +101,19 @@ class DQModelViewSet(viewsets.ModelViewSet):
         # Serializar y devolver la nueva versión
         serializer = self.get_serializer(new_instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    # Acción para obtener dimensiones relacionadas con un DQModel específico
+    @action(detail=True, methods=['get'], url_path='dimensions')
+    def get_dimensions(self, request, pk=None):
+        dq_model = get_object_or_404(DQModel, pk=pk)
+        dimensions = DQModelDimension.objects.filter(dq_model=dq_model).prefetch_related('dimension_base')
+        
+        if dimensions.exists():
+            serializer = DQModelDimensionSerializer(dimensions, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response({"detail": "No dimensions found for this DQModel"}, status=status.HTTP_404_NOT_FOUND)
+
 
 """
 class DQModelViewSet(viewsets.ModelViewSet):

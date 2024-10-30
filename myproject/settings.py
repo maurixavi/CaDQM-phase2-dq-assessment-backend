@@ -43,7 +43,9 @@ INSTALLED_APPS = [
     'dataqualitymodel',
     'contextmodel',
     'project',
-    'dqmodel'
+    'dqmodel',
+    'metadata',
+    'django_extensions'
 ]
 
 MIDDLEWARE = [
@@ -81,6 +83,7 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 # DATABASE_ROUTERS = ['myproject.ContextRouter.ContextRouter']
+DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
 
 DATABASES = {
     'default': {
@@ -90,6 +93,14 @@ DATABASES = {
         "PASSWORD": "password",
         "HOST": "localhost",
         "PORT": "5432",
+    },
+    'metadata_db': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'metadata_db',
+        'USER': 'metadata_db_user',
+        'PASSWORD': 'metadata_db_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }#,
     #'context_model': {
      #   'ENGINE': 'django.db.backends.postgresql',
@@ -144,7 +155,8 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "http://localhost:4200"
 ]
 
 REST_FRAMEWORK = {

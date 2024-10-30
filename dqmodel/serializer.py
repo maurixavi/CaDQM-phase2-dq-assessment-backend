@@ -5,11 +5,13 @@ class DQDimensionBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQDimensionBase
         fields = ['id', 'name', 'semantic']
-
+        
 class DQFactorBaseSerializer(serializers.ModelSerializer):
+    facetOf = serializers.PrimaryKeyRelatedField(queryset=DQDimensionBase.objects.all(), required=False)
+
     class Meta:
         model = DQFactorBase
-        fields = ['id', 'name', 'semantic']
+        fields = ['id', 'name', 'semantic', 'facetOf']    
 
 class DQMetricBaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -85,25 +87,40 @@ class DQModelFactorSerializer(serializers.ModelSerializer):
         queryset=DQModelDimension.objects.all()
     )
     
-    metrics = DQModelMetricSerializer(many=True, required=False, allow_empty=True)
+    # metrics = DQModelMetricSerializer(many=True, required=False, allow_empty=True)
     
-
     class Meta:
         model = DQModelFactor
-        fields = ['id', 'factor_base', 'factor_name', 'dimension', 'metrics']
+        fields = ['id', 'factor_base', 'factor_name', 'dimension']
+
 
 class DQModelDimensionSerializer(serializers.ModelSerializer):
+    #dq_model = serializers.PrimaryKeyRelatedField(read_only=True)  # Esto incluirá el dq_model id en la salida
+    dq_model = serializers.PrimaryKeyRelatedField(queryset=DQModel.objects.all())  # Permitir que se establezca el dq_model
+
     dimension_base = serializers.PrimaryKeyRelatedField(
         queryset=DQDimensionBase.objects.all()
     )
     dimension_name = serializers.CharField(source='dimension_base.name', read_only=True)
 
-    factors = DQModelFactorSerializer(many=True, required=False, allow_empty=True)
+    # factors = DQModelFactorSerializer(many=True, required=False, allow_empty=True)
     
-
     class Meta:
         model = DQModelDimension
-        fields = ['id', 'dimension_base', 'dimension_name', 'factors', 'context_components']
+        fields = ['id', 'dq_model', 'dimension_base', 'dimension_name', 'context_components'] 
+
+    def create(self, validated_data):
+        dq_model = validated_data['dq_model']
+        dimension_base = validated_data['dimension_base']
+
+        # Verifica si ya existe una dimensión con el mismo dq_model y dimension_base
+        if DQModelDimension.objects.filter(dq_model=dq_model, dimension_base=dimension_base).exists():
+            raise serializers.ValidationError("Esta dimensión ya existe para el DQ Model.")
+
+        return super().create(validated_data)
+    #class Meta:
+    #    model = DQModelDimension
+    #    fields = ['id', 'dimension_base', 'dimension_name', 'context_components']
 
 
 
@@ -119,7 +136,7 @@ class DQModelSerializer(serializers.ModelSerializer):
     aggregation_methods = AggregationDQMethodSerializer(many=True, required=False, write_only=True)
 
     # Serializadores de lectura (read-only)
-    dimensions = DQModelDimensionSerializer(source='model_dimensions', many=True, read_only=True)
+    #dimensions = DQModelDimensionSerializer(source='model_dimensions', many=True, read_only=True)
     # campos de lectura que no se incluiran en 'fields'
     # factors = DQModelFactorSerializer(source='model_factors', many=True, read_only=True)
     # metrics = DQModelMetricSerializer(source='model_metrics', many=True, read_only=True)
@@ -141,7 +158,8 @@ class DQModelSerializer(serializers.ModelSerializer):
             'model_methods',
             'measurement_methods',
             'aggregation_methods',
-            'dimensions',
+            #'dimensions',
+            'previous_version',
         ]
 
     def create(self, validated_data):
