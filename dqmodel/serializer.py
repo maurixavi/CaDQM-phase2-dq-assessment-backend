@@ -88,10 +88,12 @@ class DQModelFactorSerializer(serializers.ModelSerializer):
     )
     
     # metrics = DQModelMetricSerializer(many=True, required=False, allow_empty=True)
-    
+    dq_model = serializers.PrimaryKeyRelatedField(queryset=DQModel.objects.all())  # Agregar este campo
+
+
     class Meta:
         model = DQModelFactor
-        fields = ['id', 'factor_base', 'factor_name', 'dimension']
+        fields = ['id', 'factor_base', 'factor_name', 'dimension', 'dq_model']
 
 
 class DQModelDimensionSerializer(serializers.ModelSerializer):

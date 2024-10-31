@@ -386,9 +386,21 @@ class DQModelDimensionViewSet(viewsets.ModelViewSet):
     serializer_class = DQModelDimensionSerializer
 
 # ViewSet para DQModelFactor
+#class DQModelFactorViewSet(viewsets.ModelViewSet):
+#    queryset = DQModelFactor.objects.all()
+#    serializer_class = DQModelFactorSerializer
 class DQModelFactorViewSet(viewsets.ModelViewSet):
     queryset = DQModelFactor.objects.all()
     serializer_class = DQModelFactorSerializer
+
+    #def perform_create(self, serializer):
+    #    dq_model = self.request.data.get('dq_model')  # Asegúrate de que el cliente envíe este ID
+    #    serializer.save(dq_model=dq_model)  # Establece el dq_model aquí
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 # ViewSet para DQModelMetric
 class DQModelMetricViewSet(viewsets.ModelViewSet):
