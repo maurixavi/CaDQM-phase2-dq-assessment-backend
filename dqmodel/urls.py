@@ -42,5 +42,32 @@ urlpatterns = [
     path("dimensions-base/<int:pk>/factors-base/", DQFactorBaseViewSet.as_view({'get': 'get_factors_by_dimension'}), name='factors-by-dimension'),
     
     path("dqmodels/<int:pk>/dimensions/", DQModelViewSet.as_view({'get': 'get_dimensions'}), name='dqmodel-dimensions'),
+    
+    path(
+        "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/",
+        DQModelViewSet.as_view({'get': 'get_factors_by_dimension'}),
+        name='dqmodel-dimension-factors'
+    ),
+    
+    path(
+        "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/<int:factor_id>/metrics/",
+        DQModelViewSet.as_view({'get': 'get_metrics_by_factor'}),
+        name='dqmodel-dimension-factor-metrics'
+    ),
 
+    path(
+        "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/<int:factor_id>/metrics/<int:metric_id>/methods/",
+        DQModelViewSet.as_view({'get': 'get_methods_by_metric'}),
+        name='dqmodel-dimension-factor-metric-methods'
+    ),
+    #path(
+    #    "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/<int:factor_id>/metrics/<int:metric_id>/methods/<int:method_id>/measurement-methods/",
+    #    DQModelViewSet.as_view({'get': 'get_measurement_methods'}),
+    #    name='dqmodel-dimension-factor-metric-method-measurement-methods'
+    #),
+    #path(
+    #    "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/<int:factor_id>/metrics/<int:metric_id>/methods/<int:method_id>/aggregation-methods/",
+    #    DQModelViewSet.as_view({'get': 'get_aggregation_methods'}),
+    #    name='dqmodel-dimension-factor-metric-method-aggregation-methods'
+    #),
 ]

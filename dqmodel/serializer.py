@@ -16,12 +16,12 @@ class DQFactorBaseSerializer(serializers.ModelSerializer):
 class DQMetricBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQMetricBase
-        fields = ['id', 'name', 'purpose', 'granularity', 'resultDomain']
+        fields = ['id', 'name', 'purpose', 'granularity', 'resultDomain', 'measures']
         
 class DQMethodBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQMethodBase
-        fields = ['id', 'name', 'inputDataType', 'outputDataType', 'algorithm']
+        fields = ['id', 'name', 'inputDataType', 'outputDataType', 'algorithm', 'implements']
 
 
 # DQ MODEL ------------------------------------------------------------------
@@ -51,7 +51,7 @@ class DQModelMethodSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DQModelMethod
-        fields = ['id', 'method_base', 'method_name', 'metric', 'applied_methods']
+        fields = ['id', 'method_base', 'method_name', 'metric', 'dq_model', 'applied_methods']
     
     def get_applied_methods(self, obj):
         measurements = MeasurementDQMethodSerializer(obj.measurementdqmethod_applied_methods.all(), many=True).data
@@ -75,7 +75,7 @@ class DQModelMetricSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DQModelMetric
-        fields = ['id', 'metric_base', 'metric_name', 'factor', 'methods']
+        fields = ['id', 'metric_base', 'metric_name', 'factor', 'dq_model', 'methods']
         
         
 class DQModelFactorSerializer(serializers.ModelSerializer):
