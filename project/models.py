@@ -29,11 +29,11 @@ class Project(models.Model):
         return self.name
     
     def save(self, *args, **kwargs):
-        if self.pk: # proyecto ya existe
-            # Obtener la instancia original desde la base de datos
+        if self.pk:
             original = Project.objects.get(pk=self.pk)
-            if original.dqmodel_version != self.dqmodel_version:
-                raise ValidationError("No se puede cambiar 'dqmodel_version' una vez asignado.")
-            if original.context_version != self.context_version:
-                raise ValidationError("No se puede cambiar 'context_version' una vez asignado.")
+            # Solo validar si el campo no es null y está intentando cambiar
+            if original.dqmodel_version is not None and self.dqmodel_version != original.dqmodel_version:
+                raise ValidationError("No se puede cambiar 'dqmodel_version' una vez asignado. 1")
+            if original.context_version is not None and self.context_version != original.context_version:
+                raise ValidationError("No se puede cambiar 'context_version' una vez asignado. 2")
         super().save(*args, **kwargs)
