@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "description": "Missing values in one or more required fields",
+    "date": 1674156800
+  },
+  {
+    "id": 2,
+    "description": "Inconsistent data formats across records",
+    "date": 1674256800
+  },
+  {
+    "id": 3,
+    "description": "Duplicated records found in the dataset",
+    "date": 1674356800
+  },
+  {
+    "id": 4,
+    "description": "Data out of range or exceeding predefined limits",
+    "date": 1674456800
+  },
+  {
+    "id": 5,
+    "description": "Unresolved data conflicts between related tables",
+    "date": 1674556800
+  },
+  {
+    "id": 6,
+    "description": "Inconsistent or incorrect categorization of data",
+    "date": 1674656800
+  },
+  {
+    "id": 7,
+    "description": "Data not normalized or standardized across records",
+    "date": 1674756800
+  },
+  {
+    "id": 8,
+    "description": "Redundant data entries, leading to data duplication",
+    "date": 1674856800
+  },
+  {
+    "id": 9,
+    "description": "Data with missing timestamps or incorrect time-related values",
+    "date": 1674956800
+  },
+  {
+    "id": 10,
+    "description": "Inconsistent values between different data sources",
+    "date": 1675056800
+  },
+  {
+    "id": 11,
+    "description": "Null values in key or primary fields",
+    "date": 1675156800
+  },
+  {
+    "id": 12,
+    "description": "Invalid or non-existent references in foreign keys",
+    "date": 1675256800
+  },
+  {
+    "id": 13,
+    "description": "Missing relationships between related datasets",
+    "date": 1675356800
+  },
+  {
+    "id": 14,
+    "description": "Inconsistent use of units or measurement scales",
+    "date": 1675456800
+  },
+  {
+    "id": 15,
+    "description": "Incorrect data encoding or corruption in the dataset",
+    "date": 1675556800
+  },
+  {
+    "id": 16,
+    "description": "Data entries that violate business rules or logic constraints",
+    "date": 1675656800
+  }
+]

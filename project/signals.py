@@ -34,10 +34,10 @@ def update_project_on_dqmodel_assignment(sender, instance, created, **kwargs):
         if created or previous_dqmodel != current_dqmodel:
             if current_dqmodel:
                 if current_dqmodel.status == 'draft':
-                    new_stage = 4
+                    new_stage = 'ST4'
                     new_status = 'in_progress'
                 elif current_dqmodel.status == 'finished':
-                    new_stage = 4
+                    new_stage = 'ST4'
                     new_status = 'done'
                 else:
                     # Manejar otros estados si existen
@@ -63,10 +63,10 @@ def update_project_stage_and_status(sender, instance, created, **kwargs):
 
     # Definir las actualizaciones basadas en el estado actual de DQModel
     if instance.status == 'draft':
-        new_stage = 4
+        new_stage = 'ST4'
         new_status = 'in_progress'
     elif instance.status == 'finished':
-        new_stage = 4
+        new_stage = 'ST4'
         new_status = 'done'
     else:
         # Manejar otros estados si existen

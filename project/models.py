@@ -10,12 +10,28 @@ class Project(models.Model):
     context_version = models.ForeignKey(ContextModel, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True) 
     
+    STAGE_CHOICES = [
+        ('ST1', 'Stage 1'),
+        ('ST2', 'Stage 2'),
+        ('ST3', 'Stage 3'),
+        ('ST4', 'Stage 4'),
+        ('ST5', 'Stage 5'),
+        ('ST6', 'Stage 6'),
+    ]
+     
     STATUS_CHOICES = [
         ('to_do', 'To Do'),
         ('in_progress', 'In Progress'),
         ('done', 'Done'),
     ]
-    stage = models.IntegerField(default=1)
+    
+    #stage = models.IntegerField(default=1)
+    stage = models.CharField(
+        max_length=3,  # Longitud máxima para las etapas como 'ST1'
+        choices=STAGE_CHOICES,
+        default='ST4'  # Por defecto en 'ST4'
+    )
+    
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
