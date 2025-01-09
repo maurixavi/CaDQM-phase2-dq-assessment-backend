@@ -1,0 +1,96 @@
+{
+  "contextComponents": {
+    "applicationDomain": [
+      {
+        "id": 1,
+        "name": "string"
+      }
+    ],
+    "businessRule": [
+      {
+        "id": 2,
+        "statement": "string",
+        "semantic": "string"
+      }
+    ],
+    "dataFiltering": [
+      {
+        "id": 3,
+        "statement": "string",
+        "description": "string",
+        "taskAtHandId": 11
+      },
+      {
+        "id": 4,
+        "statement": "string",
+        "description": "string",
+        "taskAtHandId": 11
+      }
+    ],
+    "dqMetadata": [
+      {
+        "id": 5,
+        "path": "string",
+        "description": "string",
+        "measurement": "string"
+      }
+    ],
+    "dqRequirement": [
+      {
+        "id": 6,
+        "statement": "string",
+        "description": "string",
+        "dataFilteringIds": [3, 4],
+        "userTypeId": 12
+      }
+    ],
+    "otherData": [
+      {
+        "id": 7,
+        "path": "string",
+        "description": "string",
+        "owner": "string"
+      }
+    ],
+    "otherMetadata": [
+      {
+        "id": 8,
+        "path": "string",
+        "description": "string",
+        "author": "string",
+        "lastUpdate": 0
+      }
+    ],
+    "systemRequirement": [
+      {
+        "id": 10,
+        "statement": "string",
+        "description": "string"
+      }
+    ],
+    "taskAtHand": [
+      {
+        "id": 11,
+        "name": "string",
+        "purpose": "string"
+      }
+    ],
+    "userType": [
+      {
+        "id": 12,
+        "name": "string",
+        "characteristics": "string"
+      },
+      {
+        "id": 13,
+        "name": "string",
+        "characteristics": "string"
+      },
+      {
+        "id": 14,
+        "name": "string",
+        "characteristics": "string"
+      }
+    ]
+  }
+}
