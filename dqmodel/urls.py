@@ -71,27 +71,15 @@ urlpatterns = [
     ),
     
 
-    #path(
-    #    "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/<int:factor_id>/metrics/<int:metric_id>/methods/<int:method_id>/measurement-methods/",
-    #    DQModelViewSet.as_view({'get': 'get_measurement_methods'}),
-    #    name='dqmodel-dimension-factor-metric-method-measurement-methods'
-    #),
-    #path(
-    #    "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/<int:factor_id>/metrics/<int:metric_id>/methods/<int:method_id>/aggregation-methods/",
-    #    DQModelViewSet.as_view({'get': 'get_aggregation_methods'}),
-    #    name='dqmodel-dimension-factor-metric-method-aggregation-methods'
-    #),
-    
-    #path('generate-dqmethod-suggestion/<int:metric_id>/', generate_dqmethod_suggestion, name='generate_dqmethod_suggestion'),
     path('generate-dqmethod-suggestion/', generate_dqmethod_suggestion, name='generate_dqmethod_suggestion'),
     
     path('prioritized-dq-problems/', create_initial_prioritized_dq_problems, name='create_initial_prioritized_dq_problems'),
     
-    # path('prioritized-dq-problems/<int:dq_model_id>/', get_prioritized_dq_problems, name='get_prioritized_dq_problems'),
     
     path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/', get_prioritized_dq_problems, name='get_prioritized_dq_problems'),
     
     #path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/<int:id>/', PrioritizedDqProblemDetailView.as_view(), name='prioritized-dq-problem-detail'),
+    
     
 
 

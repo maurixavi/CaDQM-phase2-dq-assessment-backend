@@ -1,18 +1,15 @@
 import re
 
-# Función para leer el archivo Markdown
 def read_markdown(md_file_path):
     with open(md_file_path, 'r') as file:
         markdown_text = file.read()
     return markdown_text
 
-# Función para extraer dimensiones
 def extract_dimensions(markdown_text):
-    # Expresión regular para encontrar las dimensiones y sus descripciones
+    # Expresion regular para encontrar las dimensiones y sus descripciones
     dimension_pattern = re.compile(r"## DQ Dimension: (.+?)\n\*\*Semantic:\*\* (.+?)(?=\n##|$)", re.DOTALL)
     dimensions_matches = dimension_pattern.findall(markdown_text)
 
-    # Crear una lista con las dimensiones extraídas
     dimensions_base = []
     for dim_name, dim_semantic in dimensions_matches:
         dimensions_base.append({
@@ -22,15 +19,14 @@ def extract_dimensions(markdown_text):
 
     return dimensions_base
 
-# Función para extraer factores  
+
 def extract_factors(markdown_text):
-    # Expresión regular para encontrar los factores, sus descripciones y dimensiones
+    # Expresion regular para encontrar los factores, sus descripciones y dimension
     factor_pattern = re.compile(r"### DQ Factor: (.+?)\n\*\*Semantic:\*\* (.+?)\n\*\*Facet of \(DQ Dimension\):\*\* (.+?)(?=\n###|$)", re.DOTALL)
     factors_matches = factor_pattern.findall(markdown_text)
 
     factors_base = []
     for factor_name, factor_semantic, dimension_name in factors_matches:
-        # Asignar la dimensión correctamente
         factors_base.append({
             "name": f"{factor_name.strip()} (preset)",
             "semantic": factor_semantic.strip(),
@@ -39,16 +35,15 @@ def extract_factors(markdown_text):
 
     return factors_base
 
-# Función para extraer métricas
+
 def extract_metrics(markdown_text):
-    # Expresión regular para encontrar las métricas y sus atributos
+    # Expresion regular para encontrar las metricas y sus atributos
     metric_pattern = re.compile(r"#### DQ Metric: (.+?)\n\*\*Purpose:\*\* (.+?)\n\*\*Granularity:\*\* (.+?)\n\*\*Result Domain:\*\* (.+?)\n\*\*Measures \(DQ Factor\):\*\* (.+?)(?=\n####|$)", re.DOTALL)
     metrics_matches = metric_pattern.findall(markdown_text)
 
-    # Crear una lista con las métricas extraídas
     metrics_base = []
     for metric_name, purpose, granularity, result_domain, factor_name in metrics_matches:
-        # Limpiar los valores de las métricas y asignar el formato
+        # Limpiar los valores de las metricas y asignar el formato
         metrics_base.append({
             "name": metric_name.strip(),
             "purpose": purpose.strip(),
@@ -61,11 +56,10 @@ def extract_metrics(markdown_text):
   
 # Función para extraer métodos
 def extract_methods(markdown_text):
-    # Expresión regular ajustada para evitar capturar texto extra después de la métrica
+    # Expresion regular ajustada para evitar capturar texto extra después de la metrica
     method_pattern = re.compile(r"##### DQ Method: (.+?)\n\*\*Name:\*\* (.+?)\n\*\*Input data type:\*\* (.+?)\n\*\*Output data type:\*\* (.+?)\n\*\*Algorithm:\*\*\s*```sql\n([\s\S]+?)\s*```.*?\n\*\*Implements \(DQ Metric\):\*\* (.+?)(?=\n#####|$)", re.DOTALL)
     methods_matches = method_pattern.findall(markdown_text)
 
-    # Crear una lista con los métodos extraídos
     methods_base = []
     for method_name, name, input_data_type, output_data_type, algorithm, metric in methods_matches:
         # Limpiar los valores de los métodos y asignar el formato

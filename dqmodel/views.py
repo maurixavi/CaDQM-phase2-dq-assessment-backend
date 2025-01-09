@@ -60,14 +60,13 @@ class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        dq_model_id = request.data.get('dq_model')  # Obtén el campo 'dq_model' de los datos enviados
+        dq_model_id = request.data.get('dq_model')  # Obtiene el campo 'dq_model' de los datos enviados
 
         # Verifica si 'dq_model' está en los datos y es diferente del actual
         if dq_model_id and int(dq_model_id) != instance.dq_model.id:
             raise ValidationError({"dq_model": "No se permite cambiar el dqmodel de un problema priorizado existente."})
 
         return super().update(request, *args, **kwargs)
-
 
 
 @api_view(['GET'])
@@ -191,7 +190,7 @@ def create_initial_prioritized_dq_problems1(request):
                     description=data['description'],
                     priority=data['priority'],
                     priority_type=data['priority_type'],
-                    date=data['date']  # Puedes ajustar esto si lo necesitas
+                    date=data['date']  
                 )
                 problem.save()
                 prioritized_dq_problems.append(problem)
@@ -200,7 +199,6 @@ def create_initial_prioritized_dq_problems1(request):
             except KeyError as e:
                 return Response({"error": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Serializar las respuestas (si se requiere devolver los objetos creados)
         return Response(PrioritizedDqProblemSerializer(prioritized_dq_problems, many=True).data, status=status.HTTP_201_CREATED)
     
     else:  # Si se recibe un único objeto
@@ -249,10 +247,8 @@ def generate_dqmethod_suggestion(request):
         except DQMetricBase.DoesNotExist:
             return Response({"error": "DQMetricBase not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        print("ACÁ")
         # Generar la sugerencia utilizando la función de IA (usando los datos proporcionados)
         suggestion = generate_ai_suggestion(dq_metric_data)
-        print("suggestion", suggestion)
 
         # Incluir el ID de la métrica en la respuesta (para asociarlo en el método)
         suggestion['implements'] = dq_metric_data['id']
@@ -267,125 +263,6 @@ def generate_dqmethod_suggestion(request):
     except Exception as e:
         print("Exception")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
-def generate_dqmethod_suggestion_(request):
-    try:
-        # Obtener los datos de la métrica desde el cuerpo del POST
-        dq_metric_data = request.data  # Asumiendo que envías un JSON con los atributos necesarios
-        
-        # Verificar que los datos necesarios estén presentes en la solicitud
-        required_fields = ['id', 'name', 'purpose', 'granularity', 'resultDomain']
-        for field in required_fields:
-            if field not in dq_metric_data:
-                return Response({"error": f"'{field}' is required in the request body."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Generar la sugerencia utilizando la función de IA (usando los datos proporcionados)
-        suggestion = generate_ai_suggestion(dq_metric_data)
-
-        # Retornar la sugerencia generada
-        return Response({
-            "suggestion": suggestion,
-            "message": "Suggestion generated successfully"
-        }, status=status.HTTP_200_OK)
-    
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
-def generate_dqmethod_suggestion3(request, dqmetricbase_id):
-    try:
-        # Intentamos obtener la DQMetric usando el ID recibido
-        dqMetricBase = DQMetricBase.objects.get(id=dqmetricbase_id)
-        
-        # Llamamos a la función para generar la sugerencia de IA a partir de la métrica
-        suggestion = generate_ai_suggestion(dqMetricBase)
-
-        # Devolvemos la sugerencia generada como un solo objeto JSON
-        return Response({
-            "suggestion": suggestion,
-            "message": "Suggestion generated successfully"
-        }, status=status.HTTP_200_OK)
-    
-    except DQMetricBase.DoesNotExist:
-        return Response({"error": "DQMetricBase not found"}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-@api_view(['POST'])
-def generate_dqmethod_suggestion0(request, dqmetricbase_id):
-    try:
-        # Intentamos obtener la DQMetric usando el ID recibido
-        dqMetricBase = DQMetricBase.objects.get(id=dqmetricbase_id)
-        
-        # Llamamos a la función para generar la sugerencia de IA a partir de la métrica
-        suggestion = generate_ai_suggestion({
-            "name": dqMetricBase.name,
-            "purpose": dqMetricBase.purpose,
-            "granularity": dqMetricBase.granularity,
-            "resultDomain": dqMetricBase.resultDomain,
-            "id": dqMetricBase.id  # Usamos el ID solo para asociarlo en la sugerencia
-        })
-
-        # Devolvemos la sugerencia generada como un solo objeto JSON
-        return Response({
-            "suggestion": suggestion,
-            "message": "Suggestion generated successfully"
-        }, status=status.HTTP_200_OK)
-    
-    except DQMetricBase.DoesNotExist:
-        return Response({"error": "DQMetricBase not found"}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['POST'])
-def create_dqmethod_from_suggestion(request):
-    try:
-        # Se asume que la sugerencia ha sido confirmada y enviada al backend
-        suggestion_data = request.data.get('suggestion')
-
-        # Crear el nuevo DQMethod
-        dq_method = DQMethodBase.objects.create(
-            name=suggestion_data['name'],
-            inputDataType=suggestion_data['inputDataType'],
-            outputDataType=suggestion_data['outputDataType'],
-            algorithm=suggestion_data['algorithm'],
-            implements_id=suggestion_data['implements']
-        )
-
-        return Response({"message": "DQMethod created successfully", "method_id": dq_method.id}, status=status.HTTP_201_CREATED)
-    
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
-def generate_dqmethod_suggestion_0(request, dqmetricbase_id):
-    try:
-        # Intentamos obtener la DQMetric usando el ID recibido
-        dqMetricBase = DQMetricBase.objects.get(id=dqmetricbase_id)
-        
-        # Llamamos a la función para generar la sugerencia de IA a partir de la métrica
-        suggestion = generate_ai_suggestion(dqMetricBase)
-
-        # Devolvemos la sugerencia generada al frontend
-        return Response({"suggestion": suggestion}, status=status.HTTP_200_OK)
-    
-    except DQMetricBase.DoesNotExist:
-        return Response({"error": "DQMetricBase not found"}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-"""
-En esta vista, cuando el frontend haga una solicitud POST a este endpoint (/generate-dqmethod-suggestion/{metric_id}/), el backend:
-    - Recupera la DQMetric desde la base de datos.
-    - Llama a la función generate_ai_suggestion() para generar una sugerencia basada en los atributos de la métrica.
-    - Devuelve la sugerencia generada al frontend como un diccionario con el nombre y la descripción sugerida.
-"""    
-
 
 
 # ViewSet para DQDimensionBase
