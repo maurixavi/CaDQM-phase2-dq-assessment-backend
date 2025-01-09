@@ -1,27 +1,87 @@
 from rest_framework import serializers
-from .models import DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod
+from .models import DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod, PrioritizedDqProblem
+
+
+class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrioritizedDqProblem
+        fields = '__all__'  
+    
+
 
 class DQDimensionBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQDimensionBase
         fields = ['id', 'name', 'semantic']
+    
+    def update(self, instance, validated_data):
+        try:
+            # Crear un nuevo objeto usando validated_data (datos modificados)
+            # Se pasa validated_data a `DQDimensionBase.objects.create` para crear un nuevo objeto
+            new_instance = DQDimensionBase.objects.create(**validated_data)
+
+            # Retorna la nueva instancia creada
+            return new_instance
+
+        except Exception as e:
+            raise serializers.ValidationError(f"Error al crear el nuevo DQDimensionBase: {str(e)}")
         
+
 class DQFactorBaseSerializer(serializers.ModelSerializer):
     facetOf = serializers.PrimaryKeyRelatedField(queryset=DQDimensionBase.objects.all(), required=False)
 
     class Meta:
         model = DQFactorBase
         fields = ['id', 'name', 'semantic', 'facetOf']    
+    
+    def update(self, instance, validated_data):
+        try:
+            # Crear un nuevo objeto usando validated_data (datos modificados)
+            # Se pasa validated_data a `DQFactorBase.objects.create` para crear un nuevo objeto
+            new_instance = DQFactorBase.objects.create(**validated_data)
+
+            # Retorna la nueva instancia creada
+            return new_instance
+
+        except Exception as e:
+            raise serializers.ValidationError(f"Error al crear el nuevo DQ Factor Base: {str(e)}")
+
 
 class DQMetricBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQMetricBase
         fields = ['id', 'name', 'purpose', 'granularity', 'resultDomain', 'measures']
-        
+    
+    def update(self, instance, validated_data):
+        try:
+            # Crear un nuevo objeto usando validated_data (datos modificados)
+            # Se pasa validated_data a `DQMetricBase.objects.create` para crear un nuevo objeto
+            new_instance = DQMetricBase.objects.create(**validated_data)
+
+            # Retorna la nueva instancia creada
+            return new_instance
+
+        except Exception as e:
+            raise serializers.ValidationError(f"Error al crear la nueva métrica: {str(e)}")
+
+
+
 class DQMethodBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQMethodBase
         fields = ['id', 'name', 'inputDataType', 'outputDataType', 'algorithm', 'implements']
+    
+    def update(self, instance, validated_data):
+        try:
+            # Crear un nuevo objeto usando validated_data (datos modificados)
+            # Se pasa validated_data a `DQMethodBase.objects.create` para crear un nuevo objeto
+            new_instance = DQMethodBase.objects.create(**validated_data)
+
+            # Retorna la nueva instancia creada
+            return new_instance
+
+        except Exception as e:
+            raise serializers.ValidationError(f"Error al crear la nuevo Metodo: {str(e)}")
 
 
 # DQ MODEL ------------------------------------------------------------------

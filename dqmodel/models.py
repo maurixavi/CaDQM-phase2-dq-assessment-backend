@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import JSONField  # Django 3.1 y versiones posteriores
 
 
+    
 class DQModel(models.Model):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
@@ -255,3 +256,30 @@ class MeasurementDQMethod(AppliedDQMethod):
 
 class AggregationDQMethod(AppliedDQMethod):
     pass
+
+
+# PRIORITIZED DQ PROBLEMS
+# Definir el enumerado para los tipos de prioridad
+class PriorityType(models.TextChoices):
+    HIGH = 'High', 'High'
+    MEDIUM = 'Medium', 'Medium'
+    LOW = 'Low', 'Low'
+
+# Modelo para almacenar los problemas priorizados
+class PrioritizedDqProblem(models.Model):
+    dq_model = models.ForeignKey(DQModel, related_name='prioritized_problems', on_delete=models.CASCADE)
+    # dq_problem_id = models.IntegerField()  # ID del DQProblem original
+    description = models.CharField(max_length=100) 
+    
+    priority = models.IntegerField(default=-1)  # Prioridad numérica
+    priority_type = models.CharField(max_length=6, choices=PriorityType.choices, default=PriorityType.MEDIUM)
+    # date = models.DateTimeField()  # Fecha del DQProblem original
+    #date = models.DateTimeField(null=True, blank=True, editable=False)  # El campo es no editable.
+    date = models.DateTimeField(auto_now_add=True, editable=False)  # Fecha de creación automática
+
+
+    def __str__(self):
+        return f"DQ Problem: {self.description} - Priority {self.priority_type}"
+
+    class Meta:
+        unique_together = ('dq_model', 'description')  # Asegura que no haya duplicados de problemas dentro de un DQModel

@@ -19,7 +19,8 @@ from .models import (
     DQModelMetric,
     DQModelMethod,
     MeasurementDQMethod,
-    AggregationDQMethod
+    AggregationDQMethod,
+    PrioritizedDqProblem
 )
 from .serializer import (
     DQModelSerializer,
@@ -32,8 +33,360 @@ from .serializer import (
     DQModelDimensionSerializer,
     DQModelFactorSerializer,
     DQModelMetricSerializer,
-    DQModelMethodSerializer
+    DQModelMethodSerializer,
+    PrioritizedDqProblemSerializer
 )
+
+
+from .ai_utils import generate_ai_suggestion
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework import status
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .models import PrioritizedDqProblem, DQModel
+
+from rest_framework.exceptions import ValidationError
+
+class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
+    #queryset = PrioritizedDqProblem.objects.all()
+    serializer_class = PrioritizedDqProblemSerializer
+    
+    def get_queryset(self):
+        dq_model_id = self.kwargs.get('dq_model_id')
+        return PrioritizedDqProblem.objects.filter(dq_model_id=dq_model_id)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        dq_model_id = request.data.get('dq_model')  # Obtén el campo 'dq_model' de los datos enviados
+
+        # Verifica si 'dq_model' está en los datos y es diferente del actual
+        if dq_model_id and int(dq_model_id) != instance.dq_model.id:
+            raise ValidationError({"dq_model": "No se permite cambiar el dqmodel de un problema priorizado existente."})
+
+        return super().update(request, *args, **kwargs)
+
+
+
+@api_view(['GET'])
+def get_prioritized_dq_problems(request, dq_model_id):
+    print(f"Buscando problemas para model_id: {dq_model_id}")
+    
+    # Verificar que el modelo existe
+    try:
+        model = DQModel.objects.get(id=dq_model_id)
+    except DQModel.DoesNotExist:
+        return Response(
+            {"error": f"DQModel with id {dq_model_id} not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model_id)
+    
+    # Log para debugging
+    print(f"Problemas encontrados: {problems.count()}")
+    
+    if not problems:
+        return Response({
+            "error": f"No prioritized problems found for DQModel {dq_model_id}"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = PrioritizedDqProblemSerializer(problems, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def get_prioritized_dq_problems2(request, dq_model_id):
+    # Filtrar los problemas priorizados para el dq_model_id dado
+    problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model_id)
+    
+    # Si no existen problemas priorizados para este dq_model
+    if not problems:
+        return Response({"error": "No prioritized problems found for this DQModel."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Serializar los problemas
+    serializer = PrioritizedDqProblemSerializer(problems, many=True)
+    
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def create_initial_prioritized_dq_problems(request):
+    if request.method == 'POST':
+        # Obtener el DQModel
+        dq_model_id = request.data[0].get('dq_model')
+        try:
+            dq_model = DQModel.objects.get(id=dq_model_id)
+        except DQModel.DoesNotExist:
+            return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar si ya existen problemas priorizados
+        existing_problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model)
+        if existing_problems.exists():
+            return Response({"error": "DQModel already has prioritized problems"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Crear los problemas priorizados
+        prioritized_problems = []
+        for problem_data in request.data:
+            prioritized_problem = PrioritizedDqProblem(
+                dq_model=dq_model,
+                description=problem_data['description'],
+                priority=-1,  # valor por defecto
+                priority_type='Medium',  # valor por defecto
+                date=problem_data['date']  # asumiendo que ya tienes el formato adecuado
+            )
+            prioritized_problems.append(prioritized_problem)
+
+        # Guardar los problemas priorizados
+        PrioritizedDqProblem.objects.bulk_create(prioritized_problems)
+
+        # Responder con éxito
+        return Response({"message": "Prioritized problems created successfully"}, status=status.HTTP_201_CREATED)
+
+
+
+
+@api_view(['POST'])
+def create_initial_prioritized_dq_problems_(request):
+    if request.method == 'POST':
+        dq_model_id = request.data[0].get('dq_model')
+        try:
+            dq_model = DQModel.objects.get(id=dq_model_id)
+        except DQModel.DoesNotExist:
+            return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Iteramos sobre los problemas enviados y creamos los problemas priorizados
+        prioritized_problems = []
+        for problem_data in request.data:
+            prioritized_problem = PrioritizedDqProblem(
+                dq_model=dq_model,
+                description=problem_data['description'],
+                priority=problem_data['priority'],
+                date=problem_data['date']
+            )
+            prioritized_problems.append(prioritized_problem)
+
+        # Guardar todos los problemas priorizados a la vez
+        PrioritizedDqProblem.objects.bulk_create(prioritized_problems)
+
+        return Response({"message": "Prioritized problems created successfully"}, status=status.HTTP_201_CREATED)
+
+
+# Endpoint para crear PrioritizedDqProblem
+@api_view(['POST'])
+def create_initial_prioritized_dq_problems1(request):
+    """
+    Crea una o varias instancias de PrioritizedDqProblem.
+    """
+    if isinstance(request.data, list):  # Si se recibe una lista de problemas priorizados
+        prioritized_dq_problems = []
+        for data in request.data:
+            try:
+                dq_model = DQModel.objects.get(id=data['dq_model'])  # Buscar el modelo relacionado
+                # Crear una nueva instancia de PrioritizedDqProblem
+                problem = PrioritizedDqProblem(
+                    dq_model=dq_model,
+                    description=data['description'],
+                    priority=data['priority'],
+                    priority_type=data['priority_type'],
+                    date=data['date']  # Puedes ajustar esto si lo necesitas
+                )
+                problem.save()
+                prioritized_dq_problems.append(problem)
+            except DQModel.DoesNotExist:
+                return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
+            except KeyError as e:
+                return Response({"error": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Serializar las respuestas (si se requiere devolver los objetos creados)
+        return Response(PrioritizedDqProblemSerializer(prioritized_dq_problems, many=True).data, status=status.HTTP_201_CREATED)
+    
+    else:  # Si se recibe un único objeto
+        try:
+            dq_model = DQModel.objects.get(id=request.data['dq_model'])  # Buscar el modelo relacionado
+            # Crear una nueva instancia de PrioritizedDqProblem
+            problem = PrioritizedDqProblem(
+                dq_model=dq_model,
+                description=request.data['description'],
+                priority=request.data['priority'],
+                priority_type=request.data['priority_type'],
+                date=request.data['date']
+            )
+            problem.save()
+            return Response(PrioritizedDqProblemSerializer(problem).data, status=status.HTTP_201_CREATED)
+        except DQModel.DoesNotExist:
+            return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
+        except KeyError as e:
+            return Response({"error": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['POST'])
+def generate_dqmethod_suggestion(request):
+
+    try:
+        print("try")
+        # Obtener los datos de la métrica desde el cuerpo del POST
+        dq_metric_data = request.data  # Asegúrate de que recibes un JSON correctamente estructurado
+        print(dq_metric_data)
+        
+        # Verificar que los datos necesarios estén presentes en la solicitud
+        required_fields = ['id', 'name', 'purpose', 'granularity', 'resultDomain']
+        for field in required_fields:
+            if field not in dq_metric_data:
+                return Response({"error": f"'{field}' is required in the request body."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Asegurarse de que resultDomain se maneje como un string (sin cambiarlo)
+        if not isinstance(dq_metric_data['resultDomain'], str):
+            return Response({"error": "'resultDomain' should be a string."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+        # Obtener la DQMetric correspondiente usando el ID
+        try:
+            dq_metric = DQMetricBase.objects.get(id=dq_metric_data['id'])
+        except DQMetricBase.DoesNotExist:
+            return Response({"error": "DQMetricBase not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        print("ACÁ")
+        # Generar la sugerencia utilizando la función de IA (usando los datos proporcionados)
+        suggestion = generate_ai_suggestion(dq_metric_data)
+        print("suggestion", suggestion)
+
+        # Incluir el ID de la métrica en la respuesta (para asociarlo en el método)
+        suggestion['implements'] = dq_metric_data['id']
+
+        # Retornar la sugerencia generada
+        return Response(suggestion, status=status.HTTP_200_OK)
+        #return Response({
+        #    "suggestion": suggestion,
+        #    "message": "Suggestion generated successfully"
+        #}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        print("Exception")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def generate_dqmethod_suggestion_(request):
+    try:
+        # Obtener los datos de la métrica desde el cuerpo del POST
+        dq_metric_data = request.data  # Asumiendo que envías un JSON con los atributos necesarios
+        
+        # Verificar que los datos necesarios estén presentes en la solicitud
+        required_fields = ['id', 'name', 'purpose', 'granularity', 'resultDomain']
+        for field in required_fields:
+            if field not in dq_metric_data:
+                return Response({"error": f"'{field}' is required in the request body."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generar la sugerencia utilizando la función de IA (usando los datos proporcionados)
+        suggestion = generate_ai_suggestion(dq_metric_data)
+
+        # Retornar la sugerencia generada
+        return Response({
+            "suggestion": suggestion,
+            "message": "Suggestion generated successfully"
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def generate_dqmethod_suggestion3(request, dqmetricbase_id):
+    try:
+        # Intentamos obtener la DQMetric usando el ID recibido
+        dqMetricBase = DQMetricBase.objects.get(id=dqmetricbase_id)
+        
+        # Llamamos a la función para generar la sugerencia de IA a partir de la métrica
+        suggestion = generate_ai_suggestion(dqMetricBase)
+
+        # Devolvemos la sugerencia generada como un solo objeto JSON
+        return Response({
+            "suggestion": suggestion,
+            "message": "Suggestion generated successfully"
+        }, status=status.HTTP_200_OK)
+    
+    except DQMetricBase.DoesNotExist:
+        return Response({"error": "DQMetricBase not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['POST'])
+def generate_dqmethod_suggestion0(request, dqmetricbase_id):
+    try:
+        # Intentamos obtener la DQMetric usando el ID recibido
+        dqMetricBase = DQMetricBase.objects.get(id=dqmetricbase_id)
+        
+        # Llamamos a la función para generar la sugerencia de IA a partir de la métrica
+        suggestion = generate_ai_suggestion({
+            "name": dqMetricBase.name,
+            "purpose": dqMetricBase.purpose,
+            "granularity": dqMetricBase.granularity,
+            "resultDomain": dqMetricBase.resultDomain,
+            "id": dqMetricBase.id  # Usamos el ID solo para asociarlo en la sugerencia
+        })
+
+        # Devolvemos la sugerencia generada como un solo objeto JSON
+        return Response({
+            "suggestion": suggestion,
+            "message": "Suggestion generated successfully"
+        }, status=status.HTTP_200_OK)
+    
+    except DQMetricBase.DoesNotExist:
+        return Response({"error": "DQMetricBase not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def create_dqmethod_from_suggestion(request):
+    try:
+        # Se asume que la sugerencia ha sido confirmada y enviada al backend
+        suggestion_data = request.data.get('suggestion')
+
+        # Crear el nuevo DQMethod
+        dq_method = DQMethodBase.objects.create(
+            name=suggestion_data['name'],
+            inputDataType=suggestion_data['inputDataType'],
+            outputDataType=suggestion_data['outputDataType'],
+            algorithm=suggestion_data['algorithm'],
+            implements_id=suggestion_data['implements']
+        )
+
+        return Response({"message": "DQMethod created successfully", "method_id": dq_method.id}, status=status.HTTP_201_CREATED)
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def generate_dqmethod_suggestion_0(request, dqmetricbase_id):
+    try:
+        # Intentamos obtener la DQMetric usando el ID recibido
+        dqMetricBase = DQMetricBase.objects.get(id=dqmetricbase_id)
+        
+        # Llamamos a la función para generar la sugerencia de IA a partir de la métrica
+        suggestion = generate_ai_suggestion(dqMetricBase)
+
+        # Devolvemos la sugerencia generada al frontend
+        return Response({"suggestion": suggestion}, status=status.HTTP_200_OK)
+    
+    except DQMetricBase.DoesNotExist:
+        return Response({"error": "DQMetricBase not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+"""
+En esta vista, cuando el frontend haga una solicitud POST a este endpoint (/generate-dqmethod-suggestion/{metric_id}/), el backend:
+    - Recupera la DQMetric desde la base de datos.
+    - Llama a la función generate_ai_suggestion() para generar una sugerencia basada en los atributos de la métrica.
+    - Devuelve la sugerencia generada al frontend como un diccionario con el nombre y la descripción sugerida.
+"""    
+
+
 
 # ViewSet para DQDimensionBase
 #class DQDimensionBaseViewSet(viewsets.ReadOnlyModelViewSet):
@@ -58,16 +411,16 @@ class DQFactorBaseViewSet(viewsets.ModelViewSet):
     
 
 # ViewSet para DQMetricBase
-class DQMetricBaseViewSet(viewsets.ReadOnlyModelViewSet):
+class DQMetricBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMetricBase.objects.all()
     serializer_class = DQMetricBaseSerializer
     
-    
-    
+        
 # ViewSet para DQMethodBase
-class DQMethodBaseViewSet(viewsets.ReadOnlyModelViewSet):
+class DQMethodBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMethodBase.objects.all()
     serializer_class = DQMethodBaseSerializer
+
 
 # ViewSet para DQModel
 class DQModelViewSet(viewsets.ModelViewSet):
