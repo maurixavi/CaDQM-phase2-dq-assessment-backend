@@ -1,7 +1,7 @@
 from django.db import models
 #from ..dataqualitymodel.models , DQDimension, DQFactor, DQMetric, DQMethod, MeasurementDQMethod, AggregationDQMethod
-from dataqualitymodel.models import DQModel
-
+# from dataqualitymodel.models import DQModel
+from dqmodel.models import DQModel
 
 class ContextModel(models.Model):
     version = models.CharField(max_length=100) #The version that identifies the context model. Example: CTX_v1.0
