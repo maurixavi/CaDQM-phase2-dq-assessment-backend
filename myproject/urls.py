@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework.documentation import include_docs_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -24,4 +25,6 @@ urlpatterns = [
     path('api/', include('project.urls')),
     path('api/', include('dqmodel.urls')),
     path('data/', include('metadata.urls')),
+    
+    path('docs/', include_docs_urls(title='API Documentation'))
 ]
