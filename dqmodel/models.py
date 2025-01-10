@@ -269,13 +269,15 @@ class PriorityType(models.TextChoices):
 class PrioritizedDqProblem(models.Model):
     dq_model = models.ForeignKey(DQModel, related_name='prioritized_problems', on_delete=models.CASCADE)
     # dq_problem_id = models.IntegerField()  # ID del DQProblem original
-    description = models.CharField(max_length=100) 
+    description = models.CharField(max_length=100)
     
     priority = models.IntegerField(default=-1)  # Prioridad numérica
     priority_type = models.CharField(max_length=6, choices=PriorityType.choices, default=PriorityType.MEDIUM)
     # date = models.DateTimeField()  # Fecha del DQProblem original
-    #date = models.DateTimeField(null=True, blank=True, editable=False)  # El campo es no editable.
-    date = models.DateTimeField(auto_now_add=True, editable=False)  # Fecha de creación automática
+    #date = models.DateTimeField(null=True, blank=True, editable=False) 
+    date = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)  # Fecha de creación automática
+    
+    is_selected = models.BooleanField(default=False) 
 
 
     def __str__(self):

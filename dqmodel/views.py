@@ -56,17 +56,26 @@ class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
     
     def get_queryset(self):
         dq_model_id = self.kwargs.get('dq_model_id')
-        return PrioritizedDqProblem.objects.filter(dq_model_id=dq_model_id)
+        return PrioritizedDqProblem.objects.filter(dq_model_id=dq_model_id).order_by('priority')
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        dq_model_id = request.data.get('dq_model')  # Obtiene el campo 'dq_model' de los datos enviados
-
-        # Verifica si 'dq_model' está en los datos y es diferente del actual
+        
+        # Validar que no se modifique dq_model_id
+        dq_model_id = request.data.get('dq_model')
         if dq_model_id and int(dq_model_id) != instance.dq_model.id:
             raise ValidationError({"dq_model": "No se permite cambiar el dqmodel de un problema priorizado existente."})
+        
+        # Validar que no se modifique description
+        description = request.data.get('description')
+        if description and description != instance.description:
+            raise ValidationError({"description": "No se permite modificar la descripción."})
+            
 
         return super().update(request, *args, **kwargs)
+    
+    
+  
 
 
 @api_view(['GET'])
