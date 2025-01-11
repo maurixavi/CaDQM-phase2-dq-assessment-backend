@@ -18,6 +18,7 @@ from .views import (
     generate_dqmethod_suggestion,
     create_initial_prioritized_dq_problems,
     get_prioritized_dq_problems,
+    get_selected_prioritized_dq_problems,
     PrioritizedDqProblemDetailView
 )
 
@@ -78,9 +79,23 @@ urlpatterns = [
     
     path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/', get_prioritized_dq_problems, name='get_prioritized_dq_problems'),
     
+    path('dqmodels/<int:dq_model_id>/selected-prioritized-dq-problems/', get_selected_prioritized_dq_problems, name='get_selected_prioritized_dq_problems'),
+    
+    
     #path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/<int:id>/', PrioritizedDqProblemDetailView.as_view(), name='prioritized-dq-problem-detail'),
     
+    path(
+        "dqmodels/<int:pk>/dimensions/<int:dimension_id>/",
+        DQModelViewSet.as_view({'get': 'get_dimension'}),
+        name="dqmodel-dimension-detail"
+    ),
     
+    
+    path(
+        "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/<int:factor_id>/",
+        DQModelViewSet.as_view({'get': 'get_factor'}),
+        name='dqmodel-dimension-factors-detail'
+    ),
 
 
 ]

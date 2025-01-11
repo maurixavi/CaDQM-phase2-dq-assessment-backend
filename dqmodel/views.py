@@ -50,6 +50,24 @@ from .models import PrioritizedDqProblem, DQModel
 
 from rest_framework.exceptions import ValidationError
 
+@api_view(['GET'])
+def get_selected_prioritized_dq_problems(request, dq_model_id):
+    """
+    Devuelve solo los problemas priorizados seleccionados (is_selected=True) para un DQModel específico.
+    """
+    dq_model = get_object_or_404(DQModel, pk=dq_model_id)
+    selected_problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model, is_selected=True)
+
+    if selected_problems.exists():
+        serializer = PrioritizedDqProblemSerializer(selected_problems, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    return Response(
+        {"detail": "No selected prioritized problems found for this DQModel"},
+        status=status.HTTP_404_NOT_FOUND
+    )
+    
+    
 class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
     #queryset = PrioritizedDqProblem.objects.all()
     serializer_class = PrioritizedDqProblemSerializer
@@ -352,6 +370,15 @@ class DQModelViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         return Response({"detail": "No dimensions found for this DQModel"}, status=status.HTTP_404_NOT_FOUND)
+    
+    def get_dimension(self, request, pk=None, dimension_id=None):
+        """
+        Devuelve una dimensión específica de un modelo.
+        """
+        dq_model = get_object_or_404(DQModel, pk=pk)
+        dimension = get_object_or_404(DQModelDimension, id=dimension_id, dq_model=dq_model)
+        serializer = DQModelDimensionSerializer(dimension)
+        return Response(serializer.data)
 
     # DQ Factors de una DQ Dimension especifica en un DQModel
     @action(detail=True, methods=['get'], url_path='dimensions/(?P<dimension_id>[^/.]+)/factors')
@@ -362,6 +389,24 @@ class DQModelViewSet(viewsets.ModelViewSet):
         
         serializer = DQModelFactorSerializer(factors, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='dimensions/(?P<dimension_id>[^/.]+)/factors/(?P<factor_id>[^/.]+)')
+    def get_factor(self, request, pk=None, dimension_id=None, factor_id=None):
+        """
+        Devuelve un factor específico de una dimensión específica dentro de un modelo.
+        """
+        # Obtener el modelo
+        dq_model = get_object_or_404(DQModel, pk=pk)
+
+        # Obtener la dimensión asociada al modelo
+        dimension = get_object_or_404(DQModelDimension, pk=dimension_id, dq_model=dq_model)
+
+        # Obtener el factor asociado a la dimensión
+        factor = get_object_or_404(DQModelFactor, pk=factor_id, dimension=dimension)
+
+        # Serializar y devolver la respuesta
+        serializer = DQModelFactorSerializer(factor)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
     # DQ Metrics de un DQ Factor especifico en un DQModel
     @action(detail=True, methods=['get'], url_path='dimensions/(?P<dimension_id>[^/.]+)/factors/(?P<factor_id>[^/.]+)/metrics')
