@@ -7,7 +7,10 @@ class Project(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField() 
     dqmodel_version = models.ForeignKey(DQModel, on_delete=models.CASCADE, null=True, blank=True)
-    context_version = models.ForeignKey(ContextModel, on_delete=models.CASCADE, null=True, blank=True)
+    
+    #context_version = models.ForeignKey(ContextModel, on_delete=models.CASCADE, null=True, blank=True)
+    context_version = models.IntegerField(null=True, blank=True)  
+    
     created_at = models.DateTimeField(auto_now_add=True) 
     
     STAGE_CHOICES = [
@@ -49,7 +52,8 @@ class Project(models.Model):
             original = Project.objects.get(pk=self.pk)
             # Solo validar si el campo no es null y está intentando cambiar
             if original.dqmodel_version is not None and self.dqmodel_version != original.dqmodel_version:
-                raise ValidationError("No se puede cambiar 'dqmodel_version' una vez asignado. 1")
+                raise ValidationError("No se puede cambiar 'dqmodel_version' una vez asignado.")
             if original.context_version is not None and self.context_version != original.context_version:
-                raise ValidationError("No se puede cambiar 'context_version' una vez asignado. 2")
+                raise ValidationError("No se puede cambiar 'context_version' una vez asignado.")
         super().save(*args, **kwargs)
+
