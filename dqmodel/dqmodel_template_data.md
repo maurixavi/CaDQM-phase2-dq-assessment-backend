@@ -7,13 +7,13 @@
 **Semantic:** The data correctly represents entities or states of the real world.  
 **Facet of (DQ Dimension):** Accuracy
 
-#### DQ Metric: Real-world Matching Ratio  
+#### DQ Metric: Real-world Matching Ratio
 **Purpose:** Proportion of data matching real-world entities or states.  
 **Granularity:** Record or attribute  
 **Result Domain:** [0, 1]  
 **Measures (DQ Factor):** Semantic Accuracy
 
-##### DQ Method: Real-world Matching Ratio  
+##### DQ Method: Real-world Matching Ratio Validation
 **Name:** validateRealWorldMatching  
 **Input data type:** Dataset (list of records)  
 **Output data type:** Float (ratio)  
