@@ -153,7 +153,7 @@ class DQModelFactorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DQModelFactor
-        fields = ['id', 'factor_base', 'factor_name', 'dimension', 'dq_model']
+        fields = ['id', 'factor_base', 'factor_name', 'dimension', 'dq_model', 'context_components']
 
 
 class DQModelDimensionSerializer(serializers.ModelSerializer):

@@ -123,14 +123,18 @@ class DQModelDimension(models.Model):
 
     context_components = models.JSONField(default=list, blank=True)
     """
-        context_components": [
-        {
-            "context_components" : [context_component_id]
-            "app_domain": [1],
-            "business_rules": [1, 2, 4],
-            "user_types": [44, 55],
-            ...
-        
+        "context_components": {
+            "userType": [],
+            "otherData": [],
+            "dqMetadata": [5],
+            "taskAtHand": [],
+            "businessRule": [],
+            "dataFiltering": [4, 3],
+            "dqRequirement": [],
+            "otherMetadata": [],
+            "applicationDomain": [1],
+            "systemRequirement": []
+        }
     """
 
 
@@ -146,8 +150,10 @@ class DQModelFactor(models.Model):
         on_delete=models.CASCADE, 
         null=True,
         related_name='factors',
-        editable=False  # Hacemos el campo no editable
+        editable=False  
     )
+    
+    context_components = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"{self.factor_base.name} en {self.dq_model.version} bajo {self.dimension.dimension_base.name if self.dimension else 'sin dimensión'}"

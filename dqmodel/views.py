@@ -476,6 +476,17 @@ class AggregationDQMethodViewSet(viewsets.ModelViewSet):
 class DQModelDimensionViewSet(viewsets.ModelViewSet):
     queryset = DQModelDimension.objects.all()
     serializer_class = DQModelDimensionSerializer
+    
+    def patch(self, request, dimension_id):
+        try:
+            dimension = DQModelDimension.objects.get(id=dimension_id)
+            serializer = DQModelDimensionSerializer(dimension, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except DQModelDimension.DoesNotExist:
+            return Response({"error": "Dimension not found"}, status=status.HTTP_404_NOT_FOUND)
 
 # ViewSet para DQModelFactor
 #class DQModelFactorViewSet(viewsets.ModelViewSet):

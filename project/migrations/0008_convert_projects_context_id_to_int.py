@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
         ),
         
         # Ejecutar la conversión de datos
-        migrations.RunPython(convert_fk_to_integer),
+        # migrations.RunPython(convert_fk_to_integer),
         
         # Eliminar el campo antiguo (clave foránea)
         migrations.RemoveField(
