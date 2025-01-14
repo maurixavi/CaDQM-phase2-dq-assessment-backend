@@ -1,26 +1,22 @@
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-# from django.contrib.postgres.fields import JSONField  # Django 2.1 y versiones anteriores
 from django.db.models import JSONField  # Django 3.1 y versiones posteriores
-
-
     
 class DQModel(models.Model):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('finished', 'Finished'),
     ]
-
     version = models.CharField(max_length=100)  # identificador de versión del DQModel
     created_at = models.DateTimeField(auto_now_add=True)
+    
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
         default='draft',
     )
-    # finished_at = models.DateTimeField(null=True, blank=True)
-    finished_at = models.DateTimeField(null=True, blank=True, editable=False)  # El campo es no editable.
+    finished_at = models.DateTimeField(null=True, blank=True, editable=False) 
 
     # Relación de versiones anteriores y siguientes
     previous_version = models.ForeignKey(
@@ -31,10 +27,8 @@ class DQModel(models.Model):
         related_name='next_versions'
     )
 
-
     def __str__(self):
         return self.version
-
 
     #evitar que se cambie el estado de un DQModel ya finalizado.
     def save(self, *args, **kwargs):
@@ -50,16 +44,6 @@ class DQModel(models.Model):
             self.finished_at = timezone.now()
 
         super().save(*args, **kwargs)
-    #def save(self, *args, **kwargs):
-        # Verifica si el estado cambia de 'draft' a 'finished' y asigna la fecha y hora a finished_at
-        #if self.status == 'finished' and not self.finished_at:
-        #    self.finished_at = timezone.now()
-        
-        # No permitir que se pase 'finished_at' manualmente
-        #if 'finished_at' in kwargs:
-        #    kwargs.pop('finished_at')
-            
-        #super().save(*args, **kwargs)
 
     def clean(self):
         # Validación para asegurar que no se puede modificar un DQModel finalizado
@@ -67,10 +51,6 @@ class DQModel(models.Model):
             existing = DQModel.objects.get(pk=self.pk)
             if existing.status == 'finished' and self.status != 'finished':
                 raise ValidationError("No se puede cambiar el estado de un DQModel finalizado.")
-    #def save(self, *args, **kwargs):
-    #    if self.status == 'finished' and not self.finished_at:
-    #        self.finished_at = timezone.now()
-    #    super().save(*args, **kwargs)
 
 
 # DIMENSIONS, FACTORS, METRICS and METHODS preset
@@ -136,7 +116,6 @@ class DQModelDimension(models.Model):
             "systemRequirement": []
         }
     """
-
 
     def __str__(self):
         return f"{self.dimension_base.name} en {self.dq_model.version}"
@@ -265,26 +244,22 @@ class AggregationDQMethod(AppliedDQMethod):
 
 
 # PRIORITIZED DQ PROBLEMS
-# Definir el enumerado para los tipos de prioridad
+# Enumerado para los tipos de prioridad
 class PriorityType(models.TextChoices):
     HIGH = 'High', 'High'
     MEDIUM = 'Medium', 'Medium'
     LOW = 'Low', 'Low'
 
-# Modelo para almacenar los problemas priorizados
 class PrioritizedDqProblem(models.Model):
     dq_model = models.ForeignKey(DQModel, related_name='prioritized_problems', on_delete=models.CASCADE)
-    # dq_problem_id = models.IntegerField()  # ID del DQProblem original
     description = models.CharField(max_length=100)
     
-    priority = models.IntegerField(default=-1)  # Prioridad numérica
+    priority = models.IntegerField(default=-1)  # Prioridad numerica
     priority_type = models.CharField(max_length=6, choices=PriorityType.choices, default=PriorityType.MEDIUM)
-    # date = models.DateTimeField()  # Fecha del DQProblem original
-    #date = models.DateTimeField(null=True, blank=True, editable=False) 
-    date = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)  # Fecha de creación automática
-    
-    is_selected = models.BooleanField(default=False) 
 
+    date = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)  # Fecha de creacion automatica
+    
+    is_selected = models.BooleanField(default=False) # Se agrego al DQ Model
 
     def __str__(self):
         return f"DQ Problem: {self.description} - Priority {self.priority_type}"

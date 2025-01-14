@@ -1,13 +1,10 @@
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
-from rest_framework.decorators import action
 from django.db import transaction
-
-from rest_framework.decorators import action
-from rest_framework.response import Response
-
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
+from rest_framework.decorators import action, api_view
 from .models import (
     DQModel,
     DQDimensionBase,
@@ -20,6 +17,7 @@ from .models import (
     DQModelMethod,
     MeasurementDQMethod,
     AggregationDQMethod,
+    PrioritizedDqProblem,
     PrioritizedDqProblem
 )
 from .serializer import (
@@ -36,228 +34,18 @@ from .serializer import (
     DQModelMethodSerializer,
     PrioritizedDqProblemSerializer
 )
-
-
 from .ai_utils import generate_ai_suggestion
-from rest_framework.response import Response
-from rest_framework.decorators import api_view
-from rest_framework import status
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from .models import PrioritizedDqProblem, DQModel
-
-from rest_framework.exceptions import ValidationError
-
-@api_view(['GET'])
-def get_selected_prioritized_dq_problems(request, dq_model_id):
-    """
-    Devuelve solo los problemas priorizados seleccionados (is_selected=True) para un DQModel específico.
-    """
-    dq_model = get_object_or_404(DQModel, pk=dq_model_id)
-    selected_problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model, is_selected=True)
-
-    if selected_problems.exists():
-        serializer = PrioritizedDqProblemSerializer(selected_problems, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    return Response(
-        {"detail": "No selected prioritized problems found for this DQModel"},
-        status=status.HTTP_404_NOT_FOUND
-    )
-    
-    
-class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
-    #queryset = PrioritizedDqProblem.objects.all()
-    serializer_class = PrioritizedDqProblemSerializer
-    
-    def get_queryset(self):
-        dq_model_id = self.kwargs.get('dq_model_id')
-        return PrioritizedDqProblem.objects.filter(dq_model_id=dq_model_id).order_by('priority')
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        
-        # Validar que no se modifique dq_model_id
-        dq_model_id = request.data.get('dq_model')
-        if dq_model_id and int(dq_model_id) != instance.dq_model.id:
-            raise ValidationError({"dq_model": "No se permite cambiar el dqmodel de un problema priorizado existente."})
-        
-        # Validar que no se modifique description
-        description = request.data.get('description')
-        if description and description != instance.description:
-            raise ValidationError({"description": "No se permite modificar la descripción."})
-            
-
-        return super().update(request, *args, **kwargs)
-    
-    
-  
 
 
-@api_view(['GET'])
-def get_prioritized_dq_problems(request, dq_model_id):
-    print(f"Buscando problemas para model_id: {dq_model_id}")
-    
-    # Verificar que el modelo existe
-    try:
-        model = DQModel.objects.get(id=dq_model_id)
-    except DQModel.DoesNotExist:
-        return Response(
-            {"error": f"DQModel with id {dq_model_id} not found"}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model_id)
-    
-    # Log para debugging
-    print(f"Problemas encontrados: {problems.count()}")
-    
-    if not problems:
-        return Response({
-            "error": f"No prioritized problems found for DQModel {dq_model_id}"
-        }, status=status.HTTP_404_NOT_FOUND)
-    
-    serializer = PrioritizedDqProblemSerializer(problems, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@api_view(['GET'])
-def get_prioritized_dq_problems2(request, dq_model_id):
-    # Filtrar los problemas priorizados para el dq_model_id dado
-    problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model_id)
-    
-    # Si no existen problemas priorizados para este dq_model
-    if not problems:
-        return Response({"error": "No prioritized problems found for this DQModel."}, status=status.HTTP_404_NOT_FOUND)
-
-    # Serializar los problemas
-    serializer = PrioritizedDqProblemSerializer(problems, many=True)
-    
-    return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-def create_initial_prioritized_dq_problems(request):
-    if request.method == 'POST':
-        # Obtener el DQModel
-        dq_model_id = request.data[0].get('dq_model')
-        try:
-            dq_model = DQModel.objects.get(id=dq_model_id)
-        except DQModel.DoesNotExist:
-            return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Verificar si ya existen problemas priorizados
-        existing_problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model)
-        if existing_problems.exists():
-            return Response({"error": "DQModel already has prioritized problems"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Crear los problemas priorizados
-        prioritized_problems = []
-        for problem_data in request.data:
-            prioritized_problem = PrioritizedDqProblem(
-                dq_model=dq_model,
-                description=problem_data['description'],
-                priority=-1,  # valor por defecto
-                priority_type='Medium',  # valor por defecto
-                date=problem_data['date']  # asumiendo que ya tienes el formato adecuado
-            )
-            prioritized_problems.append(prioritized_problem)
-
-        # Guardar los problemas priorizados
-        PrioritizedDqProblem.objects.bulk_create(prioritized_problems)
-
-        # Responder con éxito
-        return Response({"message": "Prioritized problems created successfully"}, status=status.HTTP_201_CREATED)
-
-
-
-
-@api_view(['POST'])
-def create_initial_prioritized_dq_problems_(request):
-    if request.method == 'POST':
-        dq_model_id = request.data[0].get('dq_model')
-        try:
-            dq_model = DQModel.objects.get(id=dq_model_id)
-        except DQModel.DoesNotExist:
-            return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Iteramos sobre los problemas enviados y creamos los problemas priorizados
-        prioritized_problems = []
-        for problem_data in request.data:
-            prioritized_problem = PrioritizedDqProblem(
-                dq_model=dq_model,
-                description=problem_data['description'],
-                priority=problem_data['priority'],
-                date=problem_data['date']
-            )
-            prioritized_problems.append(prioritized_problem)
-
-        # Guardar todos los problemas priorizados a la vez
-        PrioritizedDqProblem.objects.bulk_create(prioritized_problems)
-
-        return Response({"message": "Prioritized problems created successfully"}, status=status.HTTP_201_CREATED)
-
-
-# Endpoint para crear PrioritizedDqProblem
-@api_view(['POST'])
-def create_initial_prioritized_dq_problems1(request):
-    """
-    Crea una o varias instancias de PrioritizedDqProblem.
-    """
-    if isinstance(request.data, list):  # Si se recibe una lista de problemas priorizados
-        prioritized_dq_problems = []
-        for data in request.data:
-            try:
-                dq_model = DQModel.objects.get(id=data['dq_model'])  # Buscar el modelo relacionado
-                # Crear una nueva instancia de PrioritizedDqProblem
-                problem = PrioritizedDqProblem(
-                    dq_model=dq_model,
-                    description=data['description'],
-                    priority=data['priority'],
-                    priority_type=data['priority_type'],
-                    date=data['date']  
-                )
-                problem.save()
-                prioritized_dq_problems.append(problem)
-            except DQModel.DoesNotExist:
-                return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
-            except KeyError as e:
-                return Response({"error": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(PrioritizedDqProblemSerializer(prioritized_dq_problems, many=True).data, status=status.HTTP_201_CREATED)
-    
-    else:  # Si se recibe un único objeto
-        try:
-            dq_model = DQModel.objects.get(id=request.data['dq_model'])  # Buscar el modelo relacionado
-            # Crear una nueva instancia de PrioritizedDqProblem
-            problem = PrioritizedDqProblem(
-                dq_model=dq_model,
-                description=request.data['description'],
-                priority=request.data['priority'],
-                priority_type=request.data['priority_type'],
-                date=request.data['date']
-            )
-            problem.save()
-            return Response(PrioritizedDqProblemSerializer(problem).data, status=status.HTTP_201_CREATED)
-        except DQModel.DoesNotExist:
-            return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
-        except KeyError as e:
-            return Response({"error": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
+# AI SUGGESTIONS GENERATION
 @api_view(['POST'])
 def generate_dqmethod_suggestion(request):
-
     try:
         print("try")
         # Obtener los datos de la métrica desde el cuerpo del POST
-        dq_metric_data = request.data  # Asegúrate de que recibes un JSON correctamente estructurado
+        dq_metric_data = request.data
         print(dq_metric_data)
         
-        # Verificar que los datos necesarios estén presentes en la solicitud
         required_fields = ['id', 'name', 'purpose', 'granularity', 'resultDomain']
         for field in required_fields:
             if field not in dq_metric_data:
@@ -292,14 +80,93 @@ def generate_dqmethod_suggestion(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# SELECTED PRIORITIZED PROBLEMS VIEW
+@api_view(['GET'])
+def get_selected_prioritized_dq_problems(request, dq_model_id):
+    """
+    Devuelve solo los problemas priorizados seleccionados (is_selected=True) para un DQModel específico.
+    """
+    dq_model = get_object_or_404(DQModel, pk=dq_model_id)
+    selected_problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model, is_selected=True)
+
+    if selected_problems.exists():
+        serializer = PrioritizedDqProblemSerializer(selected_problems, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    return Response(
+        {"detail": "No selected prioritized problems found for this DQModel"},
+        status=status.HTTP_404_NOT_FOUND
+    )
+
+# PRIORITIZED PROBLEMS VIEW
+@api_view(['GET'])
+def get_prioritized_dq_problems(request, dq_model_id):
+    print(f"Buscando problemas para model_id: {dq_model_id}")
+    
+    # Verificar que el modelo existe
+    try:
+        model = DQModel.objects.get(id=dq_model_id)
+    except DQModel.DoesNotExist:
+        return Response(
+            {"error": f"DQModel with id {dq_model_id} not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model_id)
+    
+    if not problems:
+        return Response({
+            "error": f"No prioritized problems found for DQModel {dq_model_id}"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = PrioritizedDqProblemSerializer(problems, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# INITIALIZE PRIORITIZED PROBLEMS FROM PROJECT DQ PROBLEMS
+@api_view(['POST'])
+def create_initial_prioritized_dq_problems(request):
+    if request.method == 'POST':
+        # Obtener el DQModel
+        dq_model_id = request.data[0].get('dq_model')
+        try:
+            dq_model = DQModel.objects.get(id=dq_model_id)
+        except DQModel.DoesNotExist:
+            return Response({"error": "DQModel not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar si ya existen problemas priorizados
+        existing_problems = PrioritizedDqProblem.objects.filter(dq_model=dq_model)
+        if existing_problems.exists():
+            return Response({"error": "DQModel already has prioritized problems"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Crear los problemas priorizados
+        prioritized_problems = []
+        for problem_data in request.data:
+            prioritized_problem = PrioritizedDqProblem(
+                dq_model=dq_model,
+                description=problem_data['description'],
+                priority=-1,  # valor por defecto
+                priority_type='Medium',  # valor por defecto
+                date=problem_data['date'] 
+            )
+            prioritized_problems.append(prioritized_problem)
+
+        # Guardar los problemas priorizados
+        PrioritizedDqProblem.objects.bulk_create(prioritized_problems)
+
+        return Response({"message": "Prioritized problems created successfully"}, status=status.HTTP_201_CREATED)
+
+
+
+# DQ DIMENSIONS, FACTORS, METRICS AND METHODS BASE VIEWS
+
 # ViewSet para DQDimensionBase
-#class DQDimensionBaseViewSet(viewsets.ReadOnlyModelViewSet):
 class DQDimensionBaseViewSet(viewsets.ModelViewSet):
     queryset = DQDimensionBase.objects.all()
     serializer_class = DQDimensionBaseSerializer
 
+
 # ViewSet para DQFactorBase
-#class DQFactorBaseViewSet(viewsets.ReadOnlyModelViewSet):
 class DQFactorBaseViewSet(viewsets.ModelViewSet):
     queryset = DQFactorBase.objects.all()
     serializer_class = DQFactorBaseSerializer
@@ -325,6 +192,8 @@ class DQMethodBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMethodBase.objects.all()
     serializer_class = DQMethodBaseSerializer
 
+
+# DQ MODEL VIEWS:
 
 # ViewSet para DQModel
 class DQModelViewSet(viewsets.ModelViewSet):
@@ -467,10 +336,12 @@ class MeasurementDQMethodViewSet(viewsets.ModelViewSet):
     queryset = MeasurementDQMethod.objects.all()
     serializer_class = MeasurementDQMethodSerializer
 
+
 # ViewSet para AggregationDQMethod
 class AggregationDQMethodViewSet(viewsets.ModelViewSet):
     queryset = AggregationDQMethod.objects.all()
     serializer_class = AggregationDQMethodSerializer
+
 
 # ViewSet para DQModelDimension
 class DQModelDimensionViewSet(viewsets.ModelViewSet):
@@ -488,29 +359,52 @@ class DQModelDimensionViewSet(viewsets.ModelViewSet):
         except DQModelDimension.DoesNotExist:
             return Response({"error": "Dimension not found"}, status=status.HTTP_404_NOT_FOUND)
 
+
 # ViewSet para DQModelFactor
-#class DQModelFactorViewSet(viewsets.ModelViewSet):
-#    queryset = DQModelFactor.objects.all()
-#    serializer_class = DQModelFactorSerializer
 class DQModelFactorViewSet(viewsets.ModelViewSet):
     queryset = DQModelFactor.objects.all()
     serializer_class = DQModelFactorSerializer
 
-    #def perform_create(self, serializer):
-    #    dq_model = self.request.data.get('dq_model')  # Asegúrate de que el cliente envíe este ID
-    #    serializer.save(dq_model=dq_model)  # Establece el dq_model aquí
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+
 # ViewSet para DQModelMetric
 class DQModelMetricViewSet(viewsets.ModelViewSet):
     queryset = DQModelMetric.objects.all()
     serializer_class = DQModelMetricSerializer
 
+
 # ViewSet para DQModelMethod
 class DQModelMethodViewSet(viewsets.ModelViewSet):
     queryset = DQModelMethod.objects.all()
     serializer_class = DQModelMethodSerializer
+
+
+# ViewSet para PrioritizedDqProblem
+class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
+    #queryset = PrioritizedDqProblem.objects.all()
+    serializer_class = PrioritizedDqProblemSerializer
+    
+    def get_queryset(self):
+        dq_model_id = self.kwargs.get('dq_model_id')
+        return PrioritizedDqProblem.objects.filter(dq_model_id=dq_model_id).order_by('priority')
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Validar que no se modifique dq_model_id
+        dq_model_id = request.data.get('dq_model')
+        if dq_model_id and int(dq_model_id) != instance.dq_model.id:
+            raise ValidationError({"dq_model": "No se permite cambiar el dqmodel de un problema priorizado existente."})
+        
+        # Validar que no se modifique description
+        description = request.data.get('description')
+        if description and description != instance.description:
+            raise ValidationError({"description": "No se permite modificar la descripción."})
+            
+
+        return super().update(request, *args, **kwargs)

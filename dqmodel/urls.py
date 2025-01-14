@@ -1,8 +1,5 @@
 from django.urls import path, include
-# from rest_framework.routers import DefaultRouter
 from rest_framework import routers
-from rest_framework.documentation import include_docs_urls
-#from . import views
 from .views import (
     DQModelViewSet,
     DQDimensionBaseViewSet,
@@ -40,12 +37,6 @@ router.register(
     PrioritizedDqProblemDetailView,
     basename='prioritized-dq-problem'
 )
-
-""""
-urlpatterns = [
-    path("", include(router.urls)),
-]
-"""
 
 urlpatterns = [
     path("", include(router.urls)),
