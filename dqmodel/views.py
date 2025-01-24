@@ -185,12 +185,32 @@ class DQFactorBaseViewSet(viewsets.ModelViewSet):
 class DQMetricBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMetricBase.objects.all()
     serializer_class = DQMetricBaseSerializer
+
+    @action(detail=True, methods=['get'], url_path='metrics-base')
+    def get_metrics_by_factor(self, request, pk=None, dim_id=None):
+        # Filtrar factores basados en el dimension_id
+        metrics = self.queryset.filter(measures_id=pk)
+        if metrics.exists():
+            serializer = self.get_serializer(metrics, many=True)
+            return Response(serializer.data)
+        return Response({"detail": "No metrics found for this factor"}, status=status.HTTP_404_NOT_FOUND)
+ 
     
         
 # ViewSet para DQMethodBase
 class DQMethodBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMethodBase.objects.all()
     serializer_class = DQMethodBaseSerializer
+
+    @action(detail=True, methods=['get'], url_path='methods-base')
+    def get_methods_by_metric(self, request, pk=None, dim_id=None, factor_id=None):
+        # Filtrar factores basados en el dimension_id
+        methods = self.queryset.filter(implements_id=pk)
+        if methods.exists():
+            serializer = self.get_serializer(methods, many=True)
+            return Response(serializer.data)
+        return Response({"detail": "No methods found for this metric"}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 # DQ MODEL VIEWS:
@@ -377,11 +397,23 @@ class DQModelMetricViewSet(viewsets.ModelViewSet):
     queryset = DQModelMetric.objects.all()
     serializer_class = DQModelMetricSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 # ViewSet para DQModelMethod
 class DQModelMethodViewSet(viewsets.ModelViewSet):
     queryset = DQModelMethod.objects.all()
     serializer_class = DQModelMethodSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 # ViewSet para PrioritizedDqProblem

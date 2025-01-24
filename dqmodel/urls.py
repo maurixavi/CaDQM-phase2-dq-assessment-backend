@@ -41,6 +41,10 @@ router.register(
 urlpatterns = [
     path("", include(router.urls)),
     path("dimensions-base/<int:pk>/factors-base/", DQFactorBaseViewSet.as_view({'get': 'get_factors_by_dimension'}), name='factors-by-dimension'),
+
+    path("dimensions-base/<int:dim_id>/factors-base/<int:pk>/metrics-base/", DQMetricBaseViewSet.as_view({'get': 'get_metrics_by_factor'}), name='metrics-by-factor'),
+    path("dimensions-base/<int:dim_id>/factors-base/<int:factor_id>/metrics-base/<int:pk>/methods-base/", DQMethodBaseViewSet.as_view({'get': 'get_methods_by_metric'}), name='methods-by-metric'),
+    
     
     path("dqmodels/<int:pk>/dimensions/", DQModelViewSet.as_view({'get': 'get_dimensions'}), name='dqmodel-dimensions'),
     
