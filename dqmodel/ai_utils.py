@@ -70,6 +70,8 @@ The response must be a single JSON object with this exact structure:
     "algorithm": "SQL query for the metric",
     "implements": {metric_id}
 }}
+
+For the table and column generic names, please use table1, column1.
 """
 
 prompt_template_simple = """
