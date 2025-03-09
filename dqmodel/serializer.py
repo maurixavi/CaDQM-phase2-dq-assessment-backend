@@ -153,7 +153,7 @@ class DQModelFactorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DQModelFactor
-        fields = ['id', 'factor_base', 'factor_name', 'dimension', 'dq_model', 'context_components']
+        fields = ['id', 'factor_base', 'factor_name', 'dimension', 'dq_model', 'context_components', 'dq_problems']
 
 
 class DQModelDimensionSerializer(serializers.ModelSerializer):
@@ -169,7 +169,7 @@ class DQModelDimensionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = DQModelDimension
-        fields = ['id', 'dq_model', 'dimension_base', 'dimension_name', 'context_components'] 
+        fields = ['id', 'dq_model', 'dimension_base', 'dimension_name', 'context_components', 'dq_problems'] 
 
     def create(self, validated_data):
         dq_model = validated_data['dq_model']

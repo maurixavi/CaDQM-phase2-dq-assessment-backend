@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Project
+from .models import PrioritizedDQProblem, Project
 from django.core.exceptions import ValidationError
 
 
@@ -60,3 +60,9 @@ class ProjectSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(str(e))
         except Exception as e:
             raise serializers.ValidationError(f"Error al actualizar el proyecto: {str(e)}")
+
+
+class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrioritizedDQProblem
+        fields = '__all__'  

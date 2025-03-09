@@ -14,6 +14,7 @@ from .views import (
     DQModelMethodViewSet,
     generate_dqmethod_suggestion,
     create_initial_prioritized_dq_problems,
+    get_full_dqmodel,
     get_prioritized_dq_problems,
     get_selected_prioritized_dq_problems,
     PrioritizedDqProblemDetailView
@@ -91,6 +92,8 @@ urlpatterns = [
         DQModelViewSet.as_view({'get': 'get_factor'}),
         name='dqmodel-dimension-factors-detail'
     ),
+    
+    path('dqmodels/<int:dq_model_id>/full/', get_full_dqmodel, name='get_full_dqmodel'),
 
 
 ]

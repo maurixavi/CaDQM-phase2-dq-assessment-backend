@@ -83,7 +83,7 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 # DATABASE_ROUTERS = ['myproject.ContextRouter.ContextRouter']
-DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
+#DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
 
 DATABASES = {
     'default': {
@@ -162,3 +162,5 @@ CORS_ALLOWED_ORIGINS = [
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
 }
+
+BASE_URL = 'http://localhost:8000' 

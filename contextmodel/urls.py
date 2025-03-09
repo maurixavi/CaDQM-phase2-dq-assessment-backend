@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework import routers
 from rest_framework.documentation import include_docs_urls
 from . import views
-from .views import get_context_versions
+from .views import get_context_versions, get_context_component_by_id
 
 router = routers.DefaultRouter()
 router.register(r'context-model', views.ContextModelViewSet)
@@ -24,6 +24,8 @@ urlpatterns = [
     path("", include(router.urls)),
     path('context-versions/', get_context_versions, name='context_versions'),
     path('context-versions/<int:id>/', views.get_context_by_id, name='get-context-by-id'),
-     path('context-versions/<int:id>/context-components/', views.get_context_components, name='get-context-components'),  
+    path('context-versions/<int:id>/context-components/', views.get_context_components, name='get-context-components'),
+    
+    path('context-versions/<int:context_id>/context-components/<str:component_type>/<int:component_id>/', get_context_component_by_id, name='get_context_component_by_id'),
 
 ]

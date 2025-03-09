@@ -89,7 +89,40 @@ def get_context_components(request, id):
         return JsonResponse({"error": str(e)}, status=500)
     
 
+# Vista para devolver un componente de contexto específico por su tipo e ID
+def get_context_component_by_id(request, context_id, component_type, component_id):
+    # Ruta del archivo JSON
+    file_path = os.path.join(os.path.dirname(__file__), 'context_versions.json')
 
+    try:
+        # Cargar el archivo JSON
+        with open(file_path, 'r') as json_file:
+            data = json.load(json_file)
+
+        # Buscar el contexto por su `context_id`
+        context = next((item for item in data if item['context_id'] == context_id), None)
+
+        if context:
+            # Extraer el campo 'contextComponents' del contexto encontrado
+            context_components = context.get('contextComponents', {})
+
+            # Buscar el componente específico por tipo e ID
+            if component_type in context_components:
+                component = next((item for item in context_components[component_type] if item['id'] == component_id), None)
+                if component:
+                    return JsonResponse(component)
+                else:
+                    return JsonResponse({"error": f"Componente {component_type} con ID {component_id} no encontrado"}, status=404)
+            else:
+                return JsonResponse({"error": f"Tipo de componente {component_type} no encontrado"}, status=404)
+        else:
+            return JsonResponse({"error": "Contexto no encontrado"}, status=404)
+
+    except FileNotFoundError:
+        return JsonResponse({"error": "Archivo no encontrado"}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500) 
+    
 class ContextModelViewSet(viewsets.ModelViewSet):
     queryset = ContextModel.objects.all()
     serializer_class = ContextModelSerializer

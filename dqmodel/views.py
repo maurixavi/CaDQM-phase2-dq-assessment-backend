@@ -357,11 +357,11 @@ class MeasurementDQMethodViewSet(viewsets.ModelViewSet):
     serializer_class = MeasurementDQMethodSerializer
 
 
+
 # ViewSet para AggregationDQMethod
 class AggregationDQMethodViewSet(viewsets.ModelViewSet):
     queryset = AggregationDQMethod.objects.all()
     serializer_class = AggregationDQMethodSerializer
-
 
 # ViewSet para DQModelDimension
 class DQModelDimensionViewSet(viewsets.ModelViewSet):
@@ -440,3 +440,49 @@ class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
             
 
         return super().update(request, *args, **kwargs)
+    
+    
+    
+
+
+@api_view(['GET'])
+def get_full_dqmodel(request, dq_model_id):
+    dq_model = get_object_or_404(DQModel, pk=dq_model_id)
+    
+    # Serializar el modelo
+    model_serializer = DQModelSerializer(dq_model)
+    
+    # Obtener y serializar las dimensiones
+    dimensions = DQModelDimension.objects.filter(dq_model=dq_model)
+    dimensions_serializer = DQModelDimensionSerializer(dimensions, many=True)
+    
+    # Obtener y serializar los factores, métricas y métodos
+    full_data = {
+        'model': model_serializer.data,
+        'dimensions': []
+    }
+    
+    for dimension in dimensions:
+        dimension_data = DQModelDimensionSerializer(dimension).data
+        factors = DQModelFactor.objects.filter(dimension=dimension)
+        factors_serializer = DQModelFactorSerializer(factors, many=True)
+        dimension_data['factors'] = []
+        
+        for factor in factors:
+            factor_data = DQModelFactorSerializer(factor).data
+            metrics = DQModelMetric.objects.filter(factor=factor)
+            metrics_serializer = DQModelMetricSerializer(metrics, many=True)
+            factor_data['metrics'] = []
+            
+            for metric in metrics:
+                metric_data = DQModelMetricSerializer(metric).data
+                methods = DQModelMethod.objects.filter(metric=metric)
+                methods_serializer = DQModelMethodSerializer(methods, many=True)
+                metric_data['methods'] = methods_serializer.data
+                factor_data['metrics'].append(metric_data)
+            
+            dimension_data['factors'].append(factor_data)
+        
+        full_data['dimensions'].append(dimension_data)
+    
+    return Response(full_data, status=status.HTTP_200_OK)

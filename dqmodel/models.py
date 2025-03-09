@@ -100,7 +100,8 @@ class DQMethodBase(models.Model):
 class DQModelDimension(models.Model):
     dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='model_dimensions')
     dimension_base = models.ForeignKey(DQDimensionBase, on_delete=models.CASCADE, related_name='model_dimensions')
-
+    
+    
     context_components = models.JSONField(default=list, blank=True)
     """
         "context_components": {
@@ -116,6 +117,8 @@ class DQModelDimension(models.Model):
             "systemRequirement": []
         }
     """
+    dq_problems = models.JSONField(default=list, blank=True)
+    
 
     def __str__(self):
         return f"{self.dimension_base.name} en {self.dq_model.version}"
@@ -133,6 +136,8 @@ class DQModelFactor(models.Model):
     )
     
     context_components = models.JSONField(default=list, blank=True)
+    
+    dq_problems = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"{self.factor_base.name} en {self.dq_model.version} bajo {self.dimension.dimension_base.name if self.dimension else 'sin dimensión'}"

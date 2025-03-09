@@ -57,3 +57,26 @@ class Project(models.Model):
                 raise ValidationError("No se puede cambiar 'context_version' una vez asignado.")
         super().save(*args, **kwargs)
 
+
+
+
+# PRIORITIZED DQ PROBLEMS
+# Enumerado para los tipos de prioridad
+class PriorityType(models.TextChoices):
+    HIGH = 'High', 'High'
+    MEDIUM = 'Medium', 'Medium'
+    LOW = 'Low', 'Low'
+
+class PrioritizedDQProblem(models.Model):
+    dq_problem_id = models.IntegerField() 
+    
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True, related_name='prioritized_dq_problems')
+
+    priority = models.CharField(max_length=10, choices=PriorityType.choices, default=PriorityType.MEDIUM)
+    
+    is_selected = models.BooleanField(default=False)  # if added to DQ Model
+    #dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='prioritized_dq_problems') 
+
+    def __str__(self):
+        return f"Prioritized DQ Problem {self.id} (Priority: {self.priority}, Selected: {self.is_selected})"
+
