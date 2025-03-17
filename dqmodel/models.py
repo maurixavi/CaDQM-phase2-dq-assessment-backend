@@ -170,7 +170,10 @@ class DQModelMetric(models.Model):
         on_delete=models.CASCADE, 
         related_name='metrics',
         editable=False  # Hacemos el campo no editable
-    )    
+    )
+    
+    context_components = models.JSONField(default=list, blank=True)
+        
     
     def __str__(self):
         return f"{self.metric_base.name} en {self.dq_model.version} bajo {self.factor.factor_base.name}"
