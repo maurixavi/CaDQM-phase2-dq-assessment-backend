@@ -207,6 +207,8 @@ class DQModelMethod(models.Model):
         related_name='methods',
         editable=False  # Hacemos el campo no editable
     )
+    
+    context_components = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"{self.method_base.name} en {self.dq_model.version} bajo {self.metric.metric_base.name}"

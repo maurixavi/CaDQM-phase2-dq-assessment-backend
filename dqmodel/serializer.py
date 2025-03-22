@@ -111,7 +111,7 @@ class DQModelMethodSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DQModelMethod
-        fields = ['id', 'method_base', 'method_name', 'metric', 'dq_model', 'applied_methods']
+        fields = ['id', 'method_base', 'method_name', 'metric', 'dq_model', 'applied_methods', 'context_components']
     
     def get_applied_methods(self, obj):
         measurements = MeasurementDQMethodSerializer(obj.measurementdqmethod_applied_methods.all(), many=True).data
@@ -336,7 +336,9 @@ class DQModelSerializer(serializers.ModelSerializer):
         for dimension in original_instance.model_dimensions.all():
             new_dimension = DQModelDimension.objects.create(
                 dq_model=new_instance,
-                dimension_base=dimension.dimension_base
+                dimension_base=dimension.dimension_base,
+                context_components=dimension.context_components,  
+                dq_problems=dimension.dq_problems   
             )
             dimension_map[dimension.id] = new_dimension
         
@@ -350,7 +352,9 @@ class DQModelSerializer(serializers.ModelSerializer):
             new_factor = DQModelFactor.objects.create(
                 dq_model=new_instance,
                 factor_base=factor.factor_base,
-                dimension=new_dimension
+                dimension=new_dimension,
+                context_components=factor.context_components,
+                dq_problems=factor.dq_problems
             )
             factor_map[factor.id] = new_factor
         
@@ -364,7 +368,8 @@ class DQModelSerializer(serializers.ModelSerializer):
             new_metric = DQModelMetric.objects.create(
                 dq_model=new_instance,
                 metric_base=metric.metric_base,
-                factor=new_factor
+                factor=new_factor,
+                context_components=metric.context_components
             )
             metric_map[metric.id] = new_metric
         
@@ -378,7 +383,8 @@ class DQModelSerializer(serializers.ModelSerializer):
             new_method = DQModelMethod.objects.create(
                 dq_model=new_instance,
                 method_base=method.method_base,
-                metric=new_metric
+                metric=new_metric,
+                context_components=method.context_components
             )
             method_map[method.id] = new_method
         
