@@ -17,7 +17,7 @@ import requests
 from rest_framework.decorators import action, api_view
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    queryset = Project.objects.all()
+    queryset = Project.objects.all().order_by('-id')
     serializer_class = ProjectSerializer
 
 

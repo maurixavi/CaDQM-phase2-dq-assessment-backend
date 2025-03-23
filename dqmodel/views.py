@@ -269,6 +269,26 @@ class DQModelViewSet(viewsets.ModelViewSet):
         serializer = DQModelDimensionSerializer(dimension)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'], url_path='factors')
+    def get_factors(self, request, pk=None):
+        """
+        Devuelve todos los factores asociados a un DQModel.
+        """
+        dq_model = get_object_or_404(DQModel, pk=pk)
+        factors = DQModelFactor.objects.filter(dq_model=dq_model)
+        serializer = DQModelFactorSerializer(factors, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['get'], url_path='factors/(?P<factor_id>[^/.]+)')
+    def get_factor_in_dqmodel(self, request, pk=None, factor_id=None):
+        """
+        Devuelve un factor específico de un DQModel.
+        """
+        dq_model = get_object_or_404(DQModel, pk=pk)
+        factor = get_object_or_404(DQModelFactor, id=factor_id, dq_model=dq_model)
+        serializer = DQModelFactorSerializer(factor)
+        return Response(serializer.data)
+    
     # DQ Factors de una DQ Dimension especifica en un DQModel
     @action(detail=True, methods=['get'], url_path='dimensions/(?P<dimension_id>[^/.]+)/factors')
     def get_factors_by_dimension(self, request, pk=None, dimension_id=None):
@@ -297,6 +317,27 @@ class DQModelViewSet(viewsets.ModelViewSet):
         serializer = DQModelFactorSerializer(factor)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+    @action(detail=True, methods=['get'], url_path='metrics')
+    def get_metrics(self, request, pk=None):
+        """
+        Devuelve todas las métricas asociadas a un DQModel.
+        """
+        dq_model = get_object_or_404(DQModel, pk=pk)
+        factors = DQModelFactor.objects.filter(dq_model=dq_model)
+        metrics = DQModelMetric.objects.filter(factor__in=factors)
+        serializer = DQModelMetricSerializer(metrics, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['get'], url_path='metrics/(?P<metric_id>[^/.]+)')
+    def get_metric_in_dqmodel(self, request, pk=None, metric_id=None):
+        """
+        Devuelve una métrica específica de un DQModel.
+        """
+        dq_model = get_object_or_404(DQModel, pk=pk)
+        metric = get_object_or_404(DQModelMetric, id=metric_id, factor__dq_model=dq_model)
+        serializer = DQModelMetricSerializer(metric)
+        return Response(serializer.data)
+    
     # DQ Metrics de un DQ Factor especifico en un DQModel
     @action(detail=True, methods=['get'], url_path='dimensions/(?P<dimension_id>[^/.]+)/factors/(?P<factor_id>[^/.]+)/metrics')
     def get_metrics_by_factor(self, request, pk=None, dimension_id=None, factor_id=None):
@@ -306,6 +347,29 @@ class DQModelViewSet(viewsets.ModelViewSet):
         metrics = DQModelMetric.objects.filter(factor=factor)
         
         serializer = DQModelMetricSerializer(metrics, many=True)
+        return Response(serializer.data)
+    
+    
+    @action(detail=True, methods=['get'], url_path='methods')
+    def get_methods(self, request, pk=None):
+        """
+        Devuelve todos los métodos asociados a un DQModel.
+        """
+        dq_model = get_object_or_404(DQModel, pk=pk)
+        factors = DQModelFactor.objects.filter(dq_model=dq_model)
+        metrics = DQModelMetric.objects.filter(factor__in=factors)
+        methods = DQModelMethod.objects.filter(metric__in=metrics)
+        serializer = DQModelMethodSerializer(methods, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['get'], url_path='methods/(?P<method_id>[^/.]+)')
+    def get_method_in_dqmodel(self, request, pk=None, method_id=None):
+        """
+        Devuelve un método específico de un DQModel.
+        """
+        dq_model = get_object_or_404(DQModel, pk=pk)
+        method = get_object_or_404(DQModelMethod, id=method_id, metric__factor__dq_model=dq_model)
+        serializer = DQModelMethodSerializer(method)
         return Response(serializer.data)
     
     # DQ Methods de una DQ Metric especifica en un DQModel

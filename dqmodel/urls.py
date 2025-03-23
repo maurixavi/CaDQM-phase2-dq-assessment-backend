@@ -48,6 +48,9 @@ urlpatterns = [
     
     
     path("dqmodels/<int:pk>/dimensions/", DQModelViewSet.as_view({'get': 'get_dimensions'}), name='dqmodel-dimensions'),
+    path("dqmodels/<int:pk>/factors/", DQModelViewSet.as_view({'get': 'get_factors'}), name='dqmodel-factors'),
+    path("dqmodels/<int:pk>/metrics/", DQModelViewSet.as_view({'get': 'get_metrics'}), name='dqmodel-metrics'),
+    path("dqmodels/<int:pk>/methods/", DQModelViewSet.as_view({'get': 'get_methods'}), name='dqmodel-methods'),
     
     path(
         "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/",
@@ -80,10 +83,26 @@ urlpatterns = [
     
     #path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/<int:id>/', PrioritizedDqProblemDetailView.as_view(), name='prioritized-dq-problem-detail'),
     
+    # Individual Views: Dim, Factor, Metric and Method in DQ Model
     path(
         "dqmodels/<int:pk>/dimensions/<int:dimension_id>/",
         DQModelViewSet.as_view({'get': 'get_dimension'}),
         name="dqmodel-dimension-detail"
+    ),
+    path(
+        "dqmodels/<int:pk>/factors/<int:factor_id>/",
+        DQModelViewSet.as_view({'get': 'get_factor_in_dqmodel'}),
+        name="dqmodel-factor-detail"
+    ),
+    path(
+        "dqmodels/<int:pk>/metrics/<int:metric_id>/",
+        DQModelViewSet.as_view({'get': 'get_metric_in_dqmodel'}),
+        name="dqmodel-metric-detail"
+    ),
+    path(
+        "dqmodels/<int:pk>/methods/<int:method_id>/",
+        DQModelViewSet.as_view({'get': 'get_method_in_dqmodel'}),
+        name="dqmodel-method-detail"
     ),
     
     
