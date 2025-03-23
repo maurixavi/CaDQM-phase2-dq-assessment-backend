@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PrioritizedDQProblem, Project
+from .models import DataAtHand, DataSchema, PrioritizedDQProblem, Project
 from django.core.exceptions import ValidationError
 
 
@@ -12,6 +12,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'description',
             'dqmodel_version',
             'context_version',
+            'data_at_hand',
             'stage',
             'status',
             'created_at',
@@ -66,3 +67,15 @@ class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
     class Meta:
         model = PrioritizedDQProblem
         fields = '__all__'  
+
+
+class DataAtHandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DataAtHand
+        fields = '__all__'  
+        
+        
+class DataSchemaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DataSchema
+        fields = '__all__'

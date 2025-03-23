@@ -4,13 +4,14 @@ from rest_framework import routers
 from rest_framework.documentation import include_docs_urls
 
 from . import views
-from .views import PrioritizedDQProblemViewSet, get_dq_problem_by_id, load_dq_problems_dataset, get_project_dq_problems, get_selected_prioritized_dq_problems_by_project
+from .views import DataAtHandViewSet, DataSchemaViewSet, PrioritizedDQProblemViewSet, get_dq_problem_by_id, load_dq_problems_dataset, get_project_dq_problems, get_selected_prioritized_dq_problems_by_project
 
 router = routers.DefaultRouter()
 router.register(r'projects', views.ProjectViewSet, basename='project')
 router.register(r'prioritized-dq-problems', PrioritizedDQProblemViewSet, basename='prioritized-dq-problem')
 
-
+router.register(r'data-at-hand', DataAtHandViewSet, basename='data-at-hand')  
+router.register(r'data-schema', DataSchemaViewSet, basename='data-schema')
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -33,4 +34,5 @@ urlpatterns = [
     
     path('projects/<int:project_id>/dq-problems/<int:problem_id>/', get_dq_problem_by_id, name='dq_problem_by_id'),
     
+    path('data-at-hand/<int:pk>/data-schema/', DataAtHandViewSet.as_view({'get': 'data_schema'}), name='data-at-hand-data-schema'),
 ]
