@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # Configurar el cliente de Groq
 groq_api_key = "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"
 #model = "llama3-8b-8192"
-model = "mixtral-8x7b-32768"
+model = "llama3-8b-8192"
 
 llm = ChatGroq(
     groq_api_key=groq_api_key,

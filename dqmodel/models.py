@@ -235,8 +235,12 @@ class DQModelMethod(models.Model):
 
 class AppliedDQMethod(models.Model):
     name = models.CharField(max_length=100)
-    appliedTo = models.CharField(max_length=100)  # Atributos del esquema de datos a los que se aplica el método.
+    
+    appliedTo = JSONField() # Almacena tabla y columna con sus identificadores en un objeto JSON o lista de objetos JSON
+    # appliedTo = models.CharField(max_length=100)  # Atributos del esquema de datos a los que se aplica el método.
     associatedTo = models.ForeignKey(DQModelMethod, on_delete=models.CASCADE, related_name='%(class)s_applied_methods')  # Método DQ al que está asociado.
+    
+    algorithm = models.TextField(default="", blank=False)  #implementation
 
     class Meta:
         abstract = True
@@ -276,3 +280,4 @@ class PrioritizedDqProblem(models.Model):
 
     class Meta:
         unique_together = ('dq_model', 'description')  # Asegura que no haya duplicados de problemas dentro de un DQModel
+        

@@ -13,7 +13,7 @@ def extract_dimensions(markdown_text):
     dimensions_base = []
     for dim_name, dim_semantic in dimensions_matches:
         dimensions_base.append({
-            "name": f"{dim_name.strip()} (preset)",
+            "name": f"{dim_name.strip()}",
             "semantic": dim_semantic.strip()
         })
 
@@ -28,9 +28,9 @@ def extract_factors(markdown_text):
     factors_base = []
     for factor_name, factor_semantic, dimension_name in factors_matches:
         factors_base.append({
-            "name": f"{factor_name.strip()} (preset)",
+            "name": f"{factor_name.strip()}",
             "semantic": factor_semantic.strip(),
-            "dimension": f"{dimension_name.strip()} (preset)"
+            "dimension": f"{dimension_name.strip()}"
         })
 
     return factors_base

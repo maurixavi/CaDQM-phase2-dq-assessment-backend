@@ -90,13 +90,13 @@ class DQMethodBaseSerializer(serializers.ModelSerializer):
 class MeasurementDQMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeasurementDQMethod
-        fields = ['id', 'name', 'appliedTo', 'associatedTo']
+        fields = ['id', 'name', 'appliedTo', 'algorithm', 'associatedTo']
 
 # Serializador para AggregationDQMethod
 class AggregationDQMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = AggregationDQMethod
-        fields = ['id', 'name', 'appliedTo', 'associatedTo']
+        fields = ['id', 'name', 'appliedTo', 'algorithm', 'associatedTo']
 
 class DQModelMethodSerializer(serializers.ModelSerializer):
     method_base = serializers.PrimaryKeyRelatedField(

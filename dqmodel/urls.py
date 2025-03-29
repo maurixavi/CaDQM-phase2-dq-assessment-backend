@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework import routers
+from . import views 
 from .views import (
     DQModelViewSet,
     DQDimensionBaseViewSet,
@@ -27,6 +28,7 @@ router.register(r'factors', DQModelFactorViewSet)
 router.register(r'metrics', DQModelMetricViewSet)
 router.register(r'methods', DQModelMethodViewSet)
 
+
 router.register(r'dimensions-base', DQDimensionBaseViewSet)
 router.register(r'factors-base', DQFactorBaseViewSet)
 router.register(r'metrics-base', DQMetricBaseViewSet)
@@ -42,10 +44,8 @@ router.register(
 urlpatterns = [
     path("", include(router.urls)),
     path("dimensions-base/<int:pk>/factors-base/", DQFactorBaseViewSet.as_view({'get': 'get_factors_by_dimension'}), name='factors-by-dimension'),
-
     path("dimensions-base/<int:dim_id>/factors-base/<int:pk>/metrics-base/", DQMetricBaseViewSet.as_view({'get': 'get_metrics_by_factor'}), name='metrics-by-factor'),
     path("dimensions-base/<int:dim_id>/factors-base/<int:factor_id>/metrics-base/<int:pk>/methods-base/", DQMethodBaseViewSet.as_view({'get': 'get_methods_by_metric'}), name='methods-by-metric'),
-    
     
     path("dqmodels/<int:pk>/dimensions/", DQModelViewSet.as_view({'get': 'get_dimensions'}), name='dqmodel-dimensions'),
     path("dqmodels/<int:pk>/factors/", DQModelViewSet.as_view({'get': 'get_factors'}), name='dqmodel-factors'),
@@ -70,18 +70,10 @@ urlpatterns = [
         name='dqmodel-dimension-factor-metric-methods'
     ),
     
-
     path('generate-dqmethod-suggestion/', generate_dqmethod_suggestion, name='generate_dqmethod_suggestion'),
-    
     path('prioritized-dq-problems/', create_initial_prioritized_dq_problems, name='create_initial_prioritized_dq_problems'),
-    
-    
     path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/', get_prioritized_dq_problems, name='get_prioritized_dq_problems'),
-    
     path('dqmodels/<int:dq_model_id>/selected-prioritized-dq-problems/', get_selected_prioritized_dq_problems, name='get_selected_prioritized_dq_problems'),
-    
-    
-    #path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/<int:id>/', PrioritizedDqProblemDetailView.as_view(), name='prioritized-dq-problem-detail'),
     
     # Individual Views: Dim, Factor, Metric and Method in DQ Model
     path(
@@ -105,7 +97,6 @@ urlpatterns = [
         name="dqmodel-method-detail"
     ),
     
-    
     path(
         "dqmodels/<int:pk>/dimensions/<int:dimension_id>/factors/<int:factor_id>/",
         DQModelViewSet.as_view({'get': 'get_factor'}),
@@ -113,6 +104,45 @@ urlpatterns = [
     ),
     
     path('dqmodels/<int:dq_model_id>/full/', get_full_dqmodel, name='get_full_dqmodel'),
-
-
+    
+    # Rutas para métodos aplicados (integradas en el ViewSet)
+    path(
+        "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/",
+        DQModelViewSet.as_view({'get': 'get_applied_method'}),
+        name='dqmodel-applied-method-detail'
+    ),
+    path(
+        "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execute/",
+        DQModelViewSet.as_view({'post': 'execute_applied_method'}),
+        name='dqmodel-applied-method-execute'
+    ),
+    path(
+        "dqmodels/<int:dq_model_id>/methods/execute/",
+        DQModelViewSet.as_view({'post': 'execute_multiple_methods'}),
+        name='dqmodel-methods-execute'
+    ),
+    
+    # Métodos base de una métrica base
+    path(
+        "metrics-base/<int:metric_id>/methods-base/",
+        DQMetricBaseViewSet.as_view({'get': 'get_methods_base'}),
+        name='metric-base-methods'
+    ),
+    
+    # Resultados de ejecución (ahora manejado por ExecutionLogViewSet a través del router)
+    #path(
+    #    'api/dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execute/',
+    #    views.execute_applied_method,
+    #    name='execute_applied_method'
+    #),
+    
+    # Asegúrate de que esta ruta esté correctamente configurada:
+    path(
+        "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execute/",
+        DQModelViewSet.as_view({'post': 'execute_applied_method'}),
+        name='dqmodel-applied-method-execute'
+    ),
+    
+    # Puedes eliminar esta ruta si ahora manejas todo desde el ViewSet:
+    # path('api/dqmodels/<int:dq_model_id>/applied-dq-methods/<int:method_id>/execute/', ...
 ]

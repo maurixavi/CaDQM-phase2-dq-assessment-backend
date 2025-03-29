@@ -1,3 +1,5 @@
+from datetime import timezone
+import time
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -195,6 +197,13 @@ class DQMetricBaseViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response({"detail": "No metrics found for this factor"}, status=status.HTTP_404_NOT_FOUND)
  
+    # En DQMetricBaseViewSet
+    @action(detail=True, methods=['get'], url_path='methods-base')
+    def get_methods_base(self, request, pk=None):
+        """Obtiene métodos base asociados a esta métrica base"""
+        methods = DQMethodBase.objects.filter(implements_id=pk)
+        serializer = DQMethodBaseSerializer(methods, many=True)
+        return Response(serializer.data)
     
         
 # ViewSet para DQMethodBase
@@ -214,6 +223,9 @@ class DQMethodBaseViewSet(viewsets.ModelViewSet):
 
 
 # DQ MODEL VIEWS:
+
+
+
 
 # ViewSet para DQModel
 class DQModelViewSet(viewsets.ModelViewSet):
@@ -384,35 +396,314 @@ class DQModelViewSet(viewsets.ModelViewSet):
         serializer = DQModelMethodSerializer(methods, many=True)
         return Response(serializer.data)
     
-    """ 
-    falta agregar dqmodel al metodo aplicado en definicion de model
-    
-    # Measurement Applied Methods un DQ Method especifico en un DQModel
-    @action(detail=True, methods=['get'], url_path='dimensions/(?P<dimension_id>[^/.]+)/factors/(?P<factor_id>[^/.]+)/metrics/(?P<metric_id>[^/.]+)/methods/(?P<method_id>[^/.]+)/measurement-methods')
-    def get_measurement_methods(self, request, pk=None, dimension_id=None, factor_id=None, metric_id=None, method_id=None):
+    # En DQModelViewSet
+    @action(detail=True, methods=['get'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)')
+    def get_applied_method(self, request, pk=None, applied_method_id=None):
+        """
+        Devuelve los detalles de un método aplicado (Measurement o Aggregation) en un DQModel específico.
+        """
+        # Obtener el DQModel
         dq_model = get_object_or_404(DQModel, pk=pk)
-        dimension = get_object_or_404(DQModelDimension, pk=dimension_id, dq_model=dq_model)
-        factor = get_object_or_404(DQModelFactor, pk=factor_id, dimension=dimension)
-        metric = get_object_or_404(DQModelMetric, pk=metric_id, factor=factor)
-        method = get_object_or_404(DQModelMethod, pk=method_id, metric=metric)
-        measurement_methods = MeasurementDQMethod.objects.filter(applied_methods=method)
-        
-        serializer = MeasurementDQMethodSerializer(measurement_methods, many=True)
-        return Response(serializer.data)
 
-    # Aggregation Applied Methods un DQ Method especifico en un DQModel
-    @action(detail=True, methods=['get'], url_path='dimensions/(?P<dimension_id>[^/.]+)/factors/(?P<factor_id>[^/.]+)/metrics/(?P<metric_id>[^/.]+)/methods/(?P<method_id>[^/.]+)/aggregation-methods')
-    def get_aggregation_methods(self, request, pk=None, dimension_id=None, factor_id=None, metric_id=None, method_id=None):
-        dq_model = get_object_or_404(DQModel, pk=pk)
-        dimension = get_object_or_404(DQModelDimension, pk=dimension_id, dq_model=dq_model)
-        factor = get_object_or_404(DQModelFactor, pk=factor_id, dimension=dimension)
-        metric = get_object_or_404(DQModelMetric, pk=metric_id, factor=factor)
-        method = get_object_or_404(DQModelMethod, pk=method_id, metric=metric)
-        aggregation_methods = AggregationDQMethod.objects.filter(applied_methods=method)
+        # Buscar el método aplicado (Measurement o Aggregation)
+        try:
+            applied_method = MeasurementDQMethod.objects.get(id=applied_method_id, associatedTo__metric__factor__dq_model=dq_model)
+            serializer = MeasurementDQMethodSerializer(applied_method)
+        except MeasurementDQMethod.DoesNotExist:
+            try:
+                applied_method = AggregationDQMethod.objects.get(id=applied_method_id, associatedTo__metric__factor__dq_model=dq_model)
+                serializer = AggregationDQMethodSerializer(applied_method)
+            except AggregationDQMethod.DoesNotExist:
+                return Response(
+                    {"error": "Applied method not found in this DQModel"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
+    def execute_applied_method(self, request, pk=None, applied_method_id=None):
+        """
+        Ejecuta un método aplicado con resultados mejor formateados y medición de tiempo
+        """
+        debug_info = []
+        response_data = {
+            'status': 'started',
+            'dq_model_id': pk,
+            'method_id': applied_method_id,
+            'debug_info': debug_info
+        }
+
+        try:
+            start_time = timezone.now()
+            debug_info.append(f"Inicio ejecución: {start_time}")
+            
+            # 1. Obtener el modelo y método
+            dq_model = get_object_or_404(DQModel, pk=pk)
+            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version}")
+
+            # Buscar el método aplicado
+            try:
+                applied_method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model=dq_model
+                )
+                method_type = 'measurement'
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    applied_method = AggregationDQMethod.objects.get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model=dq_model
+                    )
+                    method_type = 'aggregation'
+                except AggregationDQMethod.DoesNotExist:
+                    debug_info.append("Método no encontrado")
+                    return Response(
+                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm[:200]}...")
+
+            # 2. Conectar a la base de datos y ejecutar
+            try:
+                conn = psycopg2.connect(
+                    dbname='data_at_hand_v01',
+                    user='postgres',
+                    password='password',
+                    host='localhost',
+                    port=5432
+                )
+                debug_info.append("Conexión a PostgreSQL establecida")
+
+                # Medición de tiempo de ejecución
+                query_start_time = time.time()
+                
+                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                    cursor.execute(applied_method.algorithm)
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = [dict(row) for row in cursor.fetchall()]
+                    
+                    query_time = time.time() - query_start_time
+                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
+
+                    # Procesar resultados para mejor claridad
+                    processed_results = []
+                    for row in rows:
+                        processed_row = {
+                            'dq_metric_name': applied_method.name,
+                            'dq_metric_id': applied_method.id,
+                            'applied_to': applied_method.appliedTo,
+                            'execution_time_seconds': round(query_time, 4),
+                            'dq_value': row.get(columns[0], None)  # Tomamos el primer valor como dq_value
+                        }
+                        processed_results.append(processed_row)
+
+                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
+                    
+                    response_data.update({
+                        'status': 'success',
+                        'dq_results': processed_results,
+                        'execution_details': {
+                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
+                            'query_time_seconds': round(query_time, 4),
+                            'rows_affected': cursor.rowcount
+                        },
+                        'debug_info': debug_info
+                    })
+                    
+                    return Response(response_data)
+
+            except Exception as e:
+                debug_info.append(f"Error ejecutando consulta: {str(e)}")
+                return Response(
+                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            debug_info.append(f"Error inesperado: {str(e)}")
+            return Response(
+                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                debug_info.append("Conexión cerrada")
+
+    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
+    def execute_applied_method_v0(self, request, pk=None, applied_method_id=None):
+        """
+        Ejecuta un método aplicado con manejo robusto de errores y verificación de tablas
+        """
+        debug_info = []
+        response_data = {
+            'status': 'started',
+            'dq_model_id': pk,
+            'method_id': applied_method_id,
+            'debug_info': debug_info
+        }
+
+        try:
+            # 1. Obtener el modelo y método
+            dq_model = get_object_or_404(DQModel, pk=pk)
+            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version}")  # Usamos version en lugar de name
+            
+            # Buscar el método aplicado
+            try:
+                applied_method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model=dq_model
+                )
+                method_type = 'measurement'
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    applied_method = AggregationDQMethod.objects.get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model=dq_model
+                    )
+                    method_type = 'aggregation'
+                except AggregationDQMethod.DoesNotExist:
+                    debug_info.append("Método no encontrado")
+                    return Response(
+                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            debug_info.append(f"Método encontrado: ID {applied_method.id} (Tipo: {method_type})")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm[:200]}...")
+
+            # Resto del código permanece igual...
+            # 2. Verificar conexión a la base de datos
+            try:
+                connection = psycopg2.connect(
+                    dbname='data_at_hand_v01',
+                    user='postgres',
+                    password='password',
+                    host='localhost',
+                    port=5432
+                )
+                debug_info.append("Conexión a PostgreSQL establecida")
+
+                # Verificar tablas necesarias
+                with connection.cursor() as cursor:
+                    # Extraer nombres de tablas del algoritmo
+                    tables_needed = self.extract_table_names(applied_method.algorithm)
+                    
+                    debug_info.append(f"Tablas referenciadas en el algoritmo: {tables_needed}")
+
+                    # Verificar existencia de cada tabla
+                    missing_tables = []
+                    for table in tables_needed:
+                        cursor.execute(f"""
+                            SELECT EXISTS (
+                                SELECT FROM information_schema.tables 
+                                WHERE table_name = '{table.lower()}'
+                            )
+                        """)
+                        if not cursor.fetchone()[0]:
+                            missing_tables.append(table)
+
+                    if missing_tables:
+                        debug_info.append(f"Tablas faltantes: {missing_tables}")
+                        
+                        # Obtener lista de tablas disponibles
+                        cursor.execute("""
+                            SELECT table_name 
+                            FROM information_schema.tables 
+                            WHERE table_schema = 'public'
+                        """)
+                        available_tables = [row[0] for row in cursor.fetchall()]
+                        debug_info.append(f"Tablas disponibles: {available_tables}")
+                        
+                        return Response({
+                            'error': f"Las siguientes tablas no existen: {missing_tables}",
+                            'available_tables': available_tables,
+                            'debug_info': debug_info
+                        }, status=status.HTTP_400_BAD_REQUEST)
+
+            except Exception as e:
+                debug_info.append(f"Error de conexión a la base de datos: {str(e)}")
+                return Response(
+                    {'error': 'Database connection failed', 'debug_info': debug_info},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+
+            # 3. Ejecutar el algoritmo
+            try:
+                with connection.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                    debug_info.append("Ejecutando consulta SQL...")
+                    cursor.execute(applied_method.algorithm)
+                    
+                    # Obtener resultados
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = [dict(row) for row in cursor.fetchall()]
+                    
+                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
+                    
+                    response_data.update({
+                        'status': 'success',
+                        'method_id': applied_method.id,
+                        'columns': columns,
+                        'data': rows,
+                        'row_count': len(rows)
+                    })
+                    
+                    return Response(response_data)
+
+            except Exception as e:
+                debug_info.append(f"Error ejecutando consulta: {str(e)}")
+                return Response(
+                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            debug_info.append(f"Error inesperado: {str(e)}")
+            return Response(
+                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            if 'connection' in locals():
+                connection.close()
+                debug_info.append("Conexión cerrada")
+            
+            
+    def extract_table_names(self, sql_query):
+        """
+        Extrae nombres de tablas de una consulta SQL (implementación básica)
+        """
+        # Implementación mejorada para extraer nombres de tablas
+        tables = set()
+        tokens = sql_query.split()
+        from_index = -1
         
-        serializer = AggregationDQMethodSerializer(aggregation_methods, many=True)
-        return Response(serializer.data)
-    """
+        try:
+            from_index = tokens.index('FROM')
+        except ValueError:
+            try:
+                from_index = tokens.index('from')
+            except ValueError:
+                return tables
+
+        # Buscar nombres de tablas después de FROM
+        for i in range(from_index + 1, len(tokens)):
+            token = tokens[i].strip(';').strip(',')
+            if token.upper() in ['WHERE', 'GROUP', 'ORDER', 'LIMIT', 'JOIN', 'INNER', 'LEFT', 'RIGHT']:
+                break
+            if token and token not in ['(', ')'] and not token.upper() in ['AS', 'ON']:
+                tables.add(token.split('.')[0] if '.' in token else token)
+                
+        return tables
+    
+    
+
+    
+            
+            
 
 
 # ViewSet para MeasurementDQMethod
@@ -550,3 +841,171 @@ def get_full_dqmodel(request, dq_model_id):
         full_data['dimensions'].append(dimension_data)
     
     return Response(full_data, status=status.HTTP_200_OK)
+
+# views.py
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+import psycopg2
+from decimal import Decimal
+import json
+from .models import DQModel, AppliedDQMethod, MeasurementDQMethod, AggregationDQMethod
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from django.utils import timezone
+from .models import MeasurementDQMethod, AggregationDQMethod
+import psycopg2
+import psycopg2.extras
+from decimal import Decimal
+import json
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return float(o)
+        return super().default(o)
+
+
+def get_db_connection():
+    """Obtiene conexión a la base de datos con verificación explícita"""
+    try:
+        conn = psycopg2.connect(
+            dbname='data_at_hand_v01',
+            user='postgres',
+            password='password',
+            host='localhost',
+            port=5432
+        )
+        
+        # Verificación extendida
+        with conn.cursor() as cursor:
+            # 1. Verificar conexión básica
+            cursor.execute("SELECT 1")
+            if cursor.fetchone()[0] != 1:
+                raise Exception("Verificación básica de conexión falló")
+            
+            # 2. Verificar base de datos actual
+            cursor.execute("SELECT current_database()")
+            db_name = cursor.fetchone()[0]
+            print(f"\n--- Conectado a la base de datos: {db_name} ---")  # Log en consola
+            
+            # 3. Verificar si la tabla existe
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'books_rating'
+                )
+            """)
+            table_exists = cursor.fetchone()[0]
+            print(f"--- ¿Existe la tabla 'books_rating'?: {table_exists} ---")
+            
+            if not table_exists:
+                # 4. Listar tablas disponibles para debug
+                cursor.execute("""
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public'
+                    ORDER BY table_name
+                """)
+                print("Tablas disponibles:", [row[0] for row in cursor.fetchall()])
+                
+        return conn
+        
+    except Exception as e:
+        print(f"\n--- Error de conexión: {str(e)} ---")  # Log en consola
+        raise Exception(f"No se pudo conectar a la base de datos: {str(e)}")
+    
+
+    """
+    Ejecuta un método aplicado con chequeo de conexión a BD
+    """
+    try:
+        # 1. Buscar el método aplicado
+        method = (MeasurementDQMethod.objects.filter(
+                    dq_model_id=dq_model_id,
+                    id=method_id
+                 ).first() or 
+                 AggregationDQMethod.objects.filter(
+                    dq_model_id=dq_model_id,
+                    id=method_id
+                 ).first())
+        
+        if not method:
+            return Response(
+                {'error': 'Método no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 2. Validar el algoritmo
+        if not method.algorithm.strip():
+            return Response(
+                {'error': 'El método no tiene algoritmo definido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. Conectar a la base de datos (con chequeo explícito)
+        try:
+            conn = get_db_connection()
+        except Exception as e:
+            return Response(
+                {
+                    'status': 'error',
+                    'method_id': method_id,
+                    'error': str(e),
+                    'db_check': 'failed',
+                    'timestamp': timezone.now().isoformat()
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        # 4. Ejecutar consulta
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                cursor.execute(method.algorithm)
+                
+                # Procesar resultados
+                columns = [desc[0] for desc in cursor.description]
+                rows = [dict(row) for row in cursor.fetchall()]
+                
+                response_data = {
+                    'status': 'success',
+                    'method_id': method.id,
+                    'method_name': method.name,
+                    'applied_to': method.applied_to,
+                    'columns': columns,
+                    'data': rows,
+                    'query': method.algorithm,
+                    'db_check': 'success',
+                    'timestamp': timezone.now().isoformat()
+                }
+                
+                return Response(response_data)
+                
+        except Exception as e:
+            return Response(
+                {
+                    'status': 'error',
+                    'method_id': method_id,
+                    'error': f"Error ejecutando consulta: {str(e)}",
+                    'db_check': 'connection_ok',
+                    'timestamp': timezone.now().isoformat()
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+    except Exception as e:
+        return Response(
+            {
+                'status': 'error',
+                'method_id': method_id,
+                'error': f"Error inesperado: {str(e)}",
+                'timestamp': timezone.now().isoformat()
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    finally:
+        if 'conn' in locals():
+            conn.close()

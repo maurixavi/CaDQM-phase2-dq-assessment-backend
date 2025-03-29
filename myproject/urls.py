@@ -20,7 +20,7 @@ from rest_framework.documentation import include_docs_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/old/', include('dataqualitymodel.urls')),
+    # path('api/old/', include('dataqualitymodel.urls')),
     path('api/', include('contextmodel.urls')),
     path('api/', include('project.urls')),
     path('api/', include('dqmodel.urls')),
