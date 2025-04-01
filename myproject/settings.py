@@ -83,7 +83,7 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 # DATABASE_ROUTERS = ['myproject.ContextRouter.ContextRouter']
-#DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
+DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
 
 DATABASES = {
     'default': {
@@ -97,8 +97,8 @@ DATABASES = {
     'metadata_db': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'metadata_db',
-        'USER': 'metadata_db_user',
-        'PASSWORD': 'metadata_db_password',
+        'USER': 'postgres',
+        'PASSWORD': 'password',
         'HOST': 'localhost',
         'PORT': '5432',
     }#,

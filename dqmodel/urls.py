@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework import routers
 from . import views 
 from .views import (
+    DQExecutionResultViewSet,
     DQModelViewSet,
     DQDimensionBaseViewSet,
     DQFactorBaseViewSet,
@@ -40,6 +41,9 @@ router.register(
     PrioritizedDqProblemDetailView,
     basename='prioritized-dq-problem'
 )
+
+router.register(r'execution-results', DQExecutionResultViewSet, basename='execution-results')
+
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -145,4 +149,22 @@ urlpatterns = [
     
     # Puedes eliminar esta ruta si ahora manejas todo desde el ViewSet:
     # path('api/dqmodels/<int:dq_model_id>/applied-dq-methods/<int:method_id>/execute/', ...
+    
+    # Resultados de ejecución
+    path(
+        'dqmodels/<int:dq_model_id>/latest-results/',
+        DQExecutionResultViewSet.as_view({'get': 'get_latest_results'}),
+        name='dqmodel-latest-results'
+    ),
+    path(
+        'methods/<int:method_id>/execution-history/',
+        DQExecutionResultViewSet.as_view({'get': 'get_method_execution_history'}),
+        name='method-execution-history'
+    ),
+    
+    path(
+        'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-result/',
+        DQExecutionResultViewSet.as_view({'get': 'get_specific_method_execution_result'}),
+        name='specific-method-execution-result'
+    ),
 ]

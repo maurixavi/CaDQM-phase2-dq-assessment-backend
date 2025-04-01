@@ -3,17 +3,22 @@ import time
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.db.models import Value, CharField 
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action, api_view
+
+from dqmodel.services import DQExecutionResultService
 from .models import (
+    DQMethodExecutionResult,
     DQModel,
     DQDimensionBase,
     DQFactorBase,
     DQMetricBase,
     DQMethodBase,
     DQModelDimension,
+    DQModelExecution,
     DQModelFactor,
     DQModelMetric,
     DQModelMethod,
@@ -37,7 +42,8 @@ from .serializer import (
     PrioritizedDqProblemSerializer
 )
 from .ai_utils import generate_ai_suggestion
-
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 # AI SUGGESTIONS GENERATION
 @api_view(['POST'])
@@ -421,8 +427,151 @@ class DQModelViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
     @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
     def execute_applied_method(self, request, pk=None, applied_method_id=None):
+        """
+        Ejecuta un método aplicado con manejo explícito de tipos Decimal
+        """
+        debug_info = []
+        response_data = {
+            'status': 'started',
+            'dq_model_id': pk,
+            'method_id': applied_method_id,
+            'debug_info': debug_info
+        }
+
+        try:
+            start_time = timezone.now()
+            debug_info.append(f"Inicio ejecución: {start_time}")
+            
+            # 1. Obtener el modelo y método
+            dq_model = get_object_or_404(DQModel, pk=pk)
+            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version}")
+
+            # Buscar el método aplicado
+            try:
+                applied_method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model=dq_model
+                )
+                method_type = 'measurement'
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    applied_method = AggregationDQMethod.objects.get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model=dq_model
+                    )
+                    method_type = 'aggregation'
+                except AggregationDQMethod.DoesNotExist:
+                    debug_info.append("Método no encontrado")
+                    return Response(
+                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
+
+            # 2. Conectar a la base de datos y ejecutar
+            try:
+                conn = psycopg2.connect(
+                    dbname='data_at_hand_v01',
+                    user='postgres',
+                    password='password',
+                    host='localhost',
+                    port=5432
+                )
+                debug_info.append("Conexión a PostgreSQL establecida")
+
+                # Medición de tiempo de ejecución
+                query_start_time = time.time()
+                
+                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                    cursor.execute(applied_method.algorithm)
+                    columns = [desc[0] for desc in cursor.description]
+                    
+                    # Función para convertir Decimal a float
+                    def convert_decimals(obj):
+                        if isinstance(obj, Decimal):
+                            return float(obj)
+                        elif isinstance(obj, dict):
+                            return {k: convert_decimals(v) for k, v in obj.items()}
+                        elif isinstance(obj, (list, tuple)):
+                            return [convert_decimals(item) for item in obj]
+                        return obj
+                    
+                    # Obtener y convertir los resultados
+                    rows = [convert_decimals(dict(row)) for row in cursor.fetchall()]
+                    
+                    query_time = time.time() - query_start_time
+                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
+                    
+                    # Guardar resultados en metadata_db
+                    try:
+                        DQExecutionResultService.save_execution_result(
+                            dq_model_id=pk,
+                            applied_method=applied_method,
+                            result_value=rows[0].get(columns[0]),
+                            execution_details={
+                                'query_time_seconds': query_time,
+                                'rows_affected': cursor.rowcount,
+                                'columns': columns,
+                                'sample_data': rows[:5],
+                                'query': applied_method.algorithm
+                            }
+                        )
+                    except Exception as e:
+                        debug_info.append(f"Advertencia al guardar resultados: {str(e)}")
+
+                    # Procesar resultados para la respuesta
+                    processed_results = []
+                    for row in rows:
+                        processed_row = {
+                            'dq_metric_name': applied_method.name,
+                            'dq_metric_id': applied_method.id,
+                            'applied_to': applied_method.appliedTo,
+                            'execution_time_seconds': round(query_time, 4),
+                            'dq_value': row.get(columns[0])
+                        }
+                        processed_results.append(processed_row)
+
+                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
+                    
+                    response_data.update({
+                        'status': 'success',
+                        'dq_results': processed_results,
+                        'execution_details': {
+                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
+                            'query_time_seconds': round(query_time, 4),
+                            'rows_affected': cursor.rowcount
+                        },
+                        'debug_info': debug_info
+                    })
+                    
+                    return Response(response_data)
+
+            except Exception as e:
+                debug_info.append(f"Error ejecutando consulta: {str(e)}")
+                return Response(
+                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            debug_info.append(f"Error inesperado: {str(e)}")
+            return Response(
+                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                debug_info.append("Conexión cerrada")
+            
+
+    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
+    def execute_applied_method_problemaconjson(self, request, pk=None, applied_method_id=None):
         """
         Ejecuta un método aplicado con resultados mejor formateados y medición de tiempo
         """
@@ -464,7 +613,145 @@ class DQModelViewSet(viewsets.ModelViewSet):
                     )
 
             debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
-            debug_info.append(f"Algoritmo: {applied_method.algorithm[:200]}...")
+            # After finding the applied_method
+            #debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            #debug_info.append(f"Todos los campos: {applied_method.__dict__}")
+            #debug_info.append(f"¿Tiene atributo 'algorithm'?: {'algorithm' in applied_method.__dict__}")
+            #debug_info.append(f"Valor directo: {getattr(applied_method, 'algorithm', 'NO EXISTE')}")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
+
+            # 2. Conectar a la base de datos y ejecutar
+            try:
+                conn = psycopg2.connect(
+                    dbname='data_at_hand_v01',
+                    user='postgres',
+                    password='password',
+                    host='localhost',
+                    port=5432
+                )
+                debug_info.append("Conexión a PostgreSQL establecida")
+
+                # Medición de tiempo de ejecución
+                query_start_time = time.time()
+                
+                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                    cursor.execute(applied_method.algorithm)
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = [dict(row) for row in cursor.fetchall()]
+                    
+                    query_time = time.time() - query_start_time
+                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
+                    
+                    # Guardar resultados en metadata_db
+                    DQExecutionResultService.save_execution_result(
+                        dq_model_id=pk,
+                        applied_method=applied_method,
+                        result_value=rows[0].get(columns[0]),  # Cerrar el paréntesis de get()
+                        execution_details={
+                            'query_time_seconds': query_time,
+                            'rows_affected': cursor.rowcount,
+                            'columns': columns,
+                            'sample_data': rows[:5],  # Guardar solo 5 filas como muestra
+                            'query': applied_method.algorithm
+                        }
+                    )
+
+                    # Procesar resultados para mejor claridad
+                    processed_results = []
+                    for row in rows:
+                        processed_row = {
+                            'dq_metric_name': applied_method.name,
+                            'dq_metric_id': applied_method.id,
+                            'applied_to': applied_method.appliedTo,
+                            'execution_time_seconds': round(query_time, 4),
+                            'dq_value': row.get(columns[0], None)  # Tomamos el primer valor como dq_value
+                        }
+                        processed_results.append(processed_row)
+
+                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
+                    
+                    response_data.update({
+                        'status': 'success',
+                        'dq_results': processed_results,
+                        'execution_details': {
+                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
+                            'query_time_seconds': round(query_time, 4),
+                            'rows_affected': cursor.rowcount
+                        },
+                        'debug_info': debug_info
+                    })
+                    
+                    return Response(response_data)
+
+            except Exception as e:
+                debug_info.append(f"Error ejecutando consulta: {str(e)}")
+                return Response(
+                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            debug_info.append(f"Error inesperado: {str(e)}")
+            return Response(
+                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                debug_info.append("Conexión cerrada")
+
+
+
+    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
+    def execute_applied_method_funciona_noguarda(self, request, pk=None, applied_method_id=None):
+        """
+        Ejecuta un método aplicado con resultados mejor formateados y medición de tiempo
+        """
+        debug_info = []
+        response_data = {
+            'status': 'started',
+            'dq_model_id': pk,
+            'method_id': applied_method_id,
+            'debug_info': debug_info
+        }
+
+        try:
+            start_time = timezone.now()
+            debug_info.append(f"Inicio ejecución: {start_time}")
+            
+            # 1. Obtener el modelo y método
+            dq_model = get_object_or_404(DQModel, pk=pk)
+            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version}")
+
+            # Buscar el método aplicado
+            try:
+                applied_method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model=dq_model
+                )
+                method_type = 'measurement'
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    applied_method = AggregationDQMethod.objects.get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model=dq_model
+                    )
+                    method_type = 'aggregation'
+                except AggregationDQMethod.DoesNotExist:
+                    debug_info.append("Método no encontrado")
+                    return Response(
+                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            # After finding the applied_method
+            #debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            #debug_info.append(f"Todos los campos: {applied_method.__dict__}")
+            #debug_info.append(f"¿Tiene atributo 'algorithm'?: {'algorithm' in applied_method.__dict__}")
+            #debug_info.append(f"Valor directo: {getattr(applied_method, 'algorithm', 'NO EXISTE')}")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
 
             # 2. Conectar a la base de datos y ejecutar
             try:
@@ -533,145 +820,7 @@ class DQModelViewSet(viewsets.ModelViewSet):
                 conn.close()
                 debug_info.append("Conexión cerrada")
 
-    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
-    def execute_applied_method_v0(self, request, pk=None, applied_method_id=None):
-        """
-        Ejecuta un método aplicado con manejo robusto de errores y verificación de tablas
-        """
-        debug_info = []
-        response_data = {
-            'status': 'started',
-            'dq_model_id': pk,
-            'method_id': applied_method_id,
-            'debug_info': debug_info
-        }
 
-        try:
-            # 1. Obtener el modelo y método
-            dq_model = get_object_or_404(DQModel, pk=pk)
-            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version}")  # Usamos version en lugar de name
-            
-            # Buscar el método aplicado
-            try:
-                applied_method = MeasurementDQMethod.objects.get(
-                    id=applied_method_id,
-                    associatedTo__metric__factor__dq_model=dq_model
-                )
-                method_type = 'measurement'
-            except MeasurementDQMethod.DoesNotExist:
-                try:
-                    applied_method = AggregationDQMethod.objects.get(
-                        id=applied_method_id,
-                        associatedTo__metric__factor__dq_model=dq_model
-                    )
-                    method_type = 'aggregation'
-                except AggregationDQMethod.DoesNotExist:
-                    debug_info.append("Método no encontrado")
-                    return Response(
-                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-
-            debug_info.append(f"Método encontrado: ID {applied_method.id} (Tipo: {method_type})")
-            debug_info.append(f"Algoritmo: {applied_method.algorithm[:200]}...")
-
-            # Resto del código permanece igual...
-            # 2. Verificar conexión a la base de datos
-            try:
-                connection = psycopg2.connect(
-                    dbname='data_at_hand_v01',
-                    user='postgres',
-                    password='password',
-                    host='localhost',
-                    port=5432
-                )
-                debug_info.append("Conexión a PostgreSQL establecida")
-
-                # Verificar tablas necesarias
-                with connection.cursor() as cursor:
-                    # Extraer nombres de tablas del algoritmo
-                    tables_needed = self.extract_table_names(applied_method.algorithm)
-                    
-                    debug_info.append(f"Tablas referenciadas en el algoritmo: {tables_needed}")
-
-                    # Verificar existencia de cada tabla
-                    missing_tables = []
-                    for table in tables_needed:
-                        cursor.execute(f"""
-                            SELECT EXISTS (
-                                SELECT FROM information_schema.tables 
-                                WHERE table_name = '{table.lower()}'
-                            )
-                        """)
-                        if not cursor.fetchone()[0]:
-                            missing_tables.append(table)
-
-                    if missing_tables:
-                        debug_info.append(f"Tablas faltantes: {missing_tables}")
-                        
-                        # Obtener lista de tablas disponibles
-                        cursor.execute("""
-                            SELECT table_name 
-                            FROM information_schema.tables 
-                            WHERE table_schema = 'public'
-                        """)
-                        available_tables = [row[0] for row in cursor.fetchall()]
-                        debug_info.append(f"Tablas disponibles: {available_tables}")
-                        
-                        return Response({
-                            'error': f"Las siguientes tablas no existen: {missing_tables}",
-                            'available_tables': available_tables,
-                            'debug_info': debug_info
-                        }, status=status.HTTP_400_BAD_REQUEST)
-
-            except Exception as e:
-                debug_info.append(f"Error de conexión a la base de datos: {str(e)}")
-                return Response(
-                    {'error': 'Database connection failed', 'debug_info': debug_info},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE
-                )
-
-            # 3. Ejecutar el algoritmo
-            try:
-                with connection.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-                    debug_info.append("Ejecutando consulta SQL...")
-                    cursor.execute(applied_method.algorithm)
-                    
-                    # Obtener resultados
-                    columns = [desc[0] for desc in cursor.description]
-                    rows = [dict(row) for row in cursor.fetchall()]
-                    
-                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
-                    
-                    response_data.update({
-                        'status': 'success',
-                        'method_id': applied_method.id,
-                        'columns': columns,
-                        'data': rows,
-                        'row_count': len(rows)
-                    })
-                    
-                    return Response(response_data)
-
-            except Exception as e:
-                debug_info.append(f"Error ejecutando consulta: {str(e)}")
-                return Response(
-                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        except Exception as e:
-            debug_info.append(f"Error inesperado: {str(e)}")
-            return Response(
-                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        finally:
-            if 'connection' in locals():
-                connection.close()
-                debug_info.append("Conexión cerrada")
-            
-            
     def extract_table_names(self, sql_query):
         """
         Extrae nombres de tablas de una consulta SQL (implementación básica)
@@ -842,6 +991,712 @@ def get_full_dqmodel(request, dq_model_id):
     
     return Response(full_data, status=status.HTTP_200_OK)
 
+
+
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.contrib.contenttypes.models import ContentType
+from .models import (
+    DQModelExecution, 
+    DQMethodExecutionResult,
+    MeasurementDQMethod,
+    AggregationDQMethod
+)
+
+class DQExecutionResultViewSet(viewsets.ViewSet):
+    """
+    ViewSet para manejar resultados de ejecución (usando metadata_db)
+    """
+    
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/current-execution')
+    def get_current_execution(self, request, dq_model_id=None):
+        """
+        Obtiene la ejecución actual desde metadata_db
+        """
+        execution = DQModelExecution.objects.using('metadata_db').filter(
+            dq_model_id=dq_model_id,
+            status='in_progress'
+        ).first()
+        
+        if not execution:
+            return Response({'status': 'no_active_execution'})
+        
+        # Métodos ya ejecutados (desde metadata_db)
+        executed_methods = execution.method_results.using('metadata_db').all()
+        
+        # Todos los métodos del modelo (desde default)
+        all_methods = list(
+            MeasurementDQMethod.objects.using('default').filter(
+                associatedTo__metric__factor__dq_model_id=dq_model_id
+            ).values_list('id', flat=True)
+        ) + list(
+            AggregationDQMethod.objects.using('default').filter(
+                associatedTo__metric__factor__dq_model_id=dq_model_id
+            ).values_list('id', flat=True)
+        )
+        
+        return Response({
+            'execution_id': str(execution.execution_id),
+            'status': execution.status,
+            'started_at': execution.started_at.isoformat(),
+            'progress': {
+                'executed': executed_methods.count(),
+                'total': len(all_methods),
+                'pending': list(set(all_methods) - set(
+                    executed_methods.values_list('object_id', flat=True)
+                ))
+            }
+        })
+    
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/applied-dq-methods/(?P<applied_method_id>\d+)/execution-result')
+    def get_specific_method_execution_result(self, request, dq_model_id=None, applied_method_id=None):
+        """
+        Obtiene el resultado de ejecución específico para un método aplicado,
+        independientemente del estado de ejecución del modelo completo
+        """
+        # Buscar el método aplicado para validar que existe
+        try:
+            method = MeasurementDQMethod.objects.using('default').get(
+                id=applied_method_id,
+                associatedTo__metric__factor__dq_model_id=dq_model_id
+            )
+            content_type = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod)
+        except MeasurementDQMethod.DoesNotExist:
+            try:
+                method = AggregationDQMethod.objects.using('default').get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model_id=dq_model_id
+                )
+                content_type = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
+            except AggregationDQMethod.DoesNotExist:
+                return Response(
+                    {"error": "Método no encontrado en este DQModel"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        # Buscar TODAS las ejecuciones que incluyan este método (no solo las completadas)
+        executions = DQModelExecution.objects.using('metadata_db').filter(
+            dq_model_id=dq_model_id
+        ).order_by('-started_at')
+
+        # Buscar el resultado más reciente para este método en cualquier ejecución
+        result = DQMethodExecutionResult.objects.using('metadata_db').filter(
+            content_type=content_type,
+            object_id=applied_method_id
+        ).select_related('execution').order_by('-executed_at').first()
+
+        if not result:
+            return Response(
+                {"error": "No se encontraron resultados de ejecución para este método"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response({
+            'execution_id': str(result.execution.execution_id),
+            'execution_status': result.execution.status,
+            'dq_model_id': dq_model_id,
+            'method_id': applied_method_id,
+            'method_name': method.name,
+            'method_type': method.__class__.__name__,
+            'executed_at': result.executed_at.isoformat(),
+            'dq_value': result.dq_value,
+            'execution_time': result.details.get('execution_time'),
+            'rows_affected': result.details.get('rows_affected'),
+            'columns': result.details.get('columns'),
+            'sample_data': result.details.get('sample_data'),
+            'query': result.details.get('query')
+        })
+    
+    
+    
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/executions/(?P<execution_id>[^/.]+)')
+    def get_execution_results2(self, request, dq_model_id=None, execution_id=None):
+        """
+        Obtiene resultados de una ejecución específica desde metadata_db
+        """
+        execution = get_object_or_404(
+            DQModelExecution.objects.using('metadata_db'),
+            execution_id=execution_id,
+            dq_model_id=dq_model_id
+        )
+        
+        results = execution.method_results.using('metadata_db').select_related('content_type').all()
+        
+        return Response({
+            'execution_id': str(execution.execution_id),
+            'status': execution.status,
+            'started_at': execution.started_at.isoformat(),
+            'completed_at': execution.completed_at.isoformat() if execution.completed_at else None,
+            'results': [self._format_result(r) for r in results]
+        })
+    
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/latest-results')
+    def get_latest_results(self, request, dq_model_id=None):
+        """
+        Versión final - Obtiene resultados actualizados incluyendo ejecuciones recientes
+        """
+        try:
+            # 1. Obtener la ejecución activa
+            execution = DQModelExecution.objects.using('metadata_db').filter(
+                dq_model_id=dq_model_id
+            ).order_by('-started_at').first()
+
+            if not execution:
+                return Response(
+                    {"error": "No hay ejecuciones registradas para este modelo"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # 2. Obtener todos los métodos aplicados del modelo
+            methods_qs = MeasurementDQMethod.objects.using('default').filter(
+                associatedTo__metric__factor__dq_model_id=dq_model_id
+            ).annotate(
+                method_type=Value('MeasurementDQMethod', output_field=CharField())
+            ).union(
+                AggregationDQMethod.objects.using('default').filter(
+                    associatedTo__metric__factor__dq_model_id=dq_model_id
+                ).annotate(
+                    method_type=Value('AggregationDQMethod', output_field=CharField())
+                )
+            )
+
+            # 3. Obtener todos los resultados de ejecución
+            executed_results = DQMethodExecutionResult.objects.using('metadata_db').filter(
+                execution=execution
+            ).select_related('content_type')
+
+            # 4. Mapear content types
+            content_types = {
+                'MeasurementDQMethod': ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod),
+                'AggregationDQMethod': ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
+            }
+
+            # 5. Construir respuesta
+            formatted_results = []
+            completed_count = 0
+
+            for method in methods_qs:
+                content_type = content_types[method.method_type]
+                result = executed_results.filter(
+                    content_type=content_type,
+                    object_id=method.id
+                ).first()
+
+                if result:
+                    # Método ejecutado
+                    formatted_results.append({
+                        'method_id': method.id,
+                        'method_name': method.name,
+                        'method_type': method.method_type,
+                        'executed_at': result.executed_at.isoformat(),
+                        'dq_value': result.dq_value,
+                        'execution_time': result.details.get('execution_time'),
+                        'columns': result.details.get('columns'),
+                        'sample_data': result.details.get('sample_data'),
+                        'query': result.details.get('query'),
+                        'status': 'completed'
+                    })
+                    completed_count += 1
+                else:
+                    # Método pendiente
+                    formatted_results.append({
+                        'method_id': method.id,
+                        'method_name': method.name,
+                        'method_type': method.method_type,
+                        'status': 'pending'
+                    })
+
+            # 6. Ordenar resultados (completados primero)
+            formatted_results.sort(key=lambda x: (0 if x['status'] == 'completed' else 1, x['method_id']))
+
+            return Response({
+                'execution_id': str(execution.execution_id),
+                'execution_status': execution.status,
+                'started_at': execution.started_at.isoformat(),
+                'completed_at': execution.completed_at.isoformat() if execution.completed_at else None,
+                'progress': {
+                    'completed': completed_count,
+                    'pending': len(formatted_results) - completed_count,
+                    'total': len(formatted_results)
+                },
+                'results': formatted_results
+            })
+
+        except Exception as e:
+            return Response(
+                {"error": f"Error al obtener resultados: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/latest-results')
+    def get_latest_results(self, request, dq_model_id=None):
+        # 1. Obtener ejecución
+        execution = DQModelExecution.objects.using('metadata_db').filter(
+            dq_model_id=dq_model_id
+        ).order_by('-started_at').first()
+
+        if not execution:
+            return Response({"error": "No hay ejecuciones registradas"}, status=404)
+
+        # 2. Obtener métodos aplicados desde default
+        methods = list(MeasurementDQMethod.objects.using('default').filter(
+            associatedTo__metric__factor__dq_model_id=dq_model_id
+        )) + list(AggregationDQMethod.objects.using('default').filter(
+            associatedTo__metric__factor__dq_model_id=dq_model_id
+        ))
+
+        # 3. Obtener IDs de content_types desde default
+        from django.contrib.contenttypes.models import ContentType
+        measurement_ct = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod)
+        aggregation_ct = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
+
+        # 4. Buscar resultados usando RAW SQL para evitar problemas de content_types
+        from django.db import connections
+        with connections['metadata_db'].cursor() as cursor:
+            cursor.execute("""
+                SELECT object_id, dq_value, details, content_type_id
+                FROM dq_method_execution_result
+                WHERE execution_id = %s
+                AND content_type_id IN (%s, %s)
+            """, [str(execution.execution_id), measurement_ct.id, aggregation_ct.id])
+            
+            raw_results = cursor.fetchall()
+
+        # 5. Mapear resultados
+        results_map = {}
+        for row in raw_results:
+            object_id, dq_value, details, content_type_id = row
+            results_map[(content_type_id, object_id)] = {
+                'dq_value': dq_value,
+                'details': details
+            }
+
+        # 6. Construir respuesta
+        formatted = []
+        for method in methods:
+            content_type_id = measurement_ct.id if isinstance(method, MeasurementDQMethod) else aggregation_ct.id
+            key = (content_type_id, method.id)
+            
+            if key in results_map:
+                result = results_map[key]
+                formatted.append({
+                    'method_id': method.id,
+                    'method_name': method.name,
+                    'method_type': method.__class__.__name__,
+                    'status': 'completed',
+                    'dq_value': result['dq_value'],
+                    'details': result['details']
+                })
+            else:
+                formatted.append({
+                    'method_id': method.id,
+                    'method_name': method.name,
+                    'method_type': method.__class__.__name__,
+                    'status': 'pending'
+                })
+
+        return Response({
+            'execution_id': str(execution.execution_id),
+            'results': sorted(formatted, key=lambda x: x['status'])
+        })
+    
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/latest-results')
+    def get_latest_results222(self, request, dq_model_id=None):
+        """
+        Obtiene los últimos resultados para un DQModel con mensajes de debug
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"\n{'='*50}")
+        logger.info(f"Iniciando búsqueda de resultados para DQModel {dq_model_id}")
+        logger.info(f"{'='*50}\n")
+
+        # 1. Obtener la ejecución activa
+        execution = DQModelExecution.objects.using('metadata_db').filter(
+            dq_model_id=dq_model_id
+        ).order_by('-started_at').first()
+
+        if not execution:
+            logger.error("No se encontró ninguna ejecución para este modelo")
+            return Response(
+                {"error": "No hay ejecuciones registradas para este modelo"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        logger.info(f"Ejecución encontrada - ID: {execution.execution_id}")
+        logger.info(f"Estado: {execution.status}")
+        logger.info(f"Iniciada: {execution.started_at}")
+        logger.info(f"Completada: {execution.completed_at}\n")
+
+        # 2. Obtener métodos aplicados
+        logger.info("Buscando métodos Measurement...")
+        measurement_methods = list(MeasurementDQMethod.objects.using('default').filter(
+            associatedTo__metric__factor__dq_model_id=dq_model_id
+        ))
+        logger.info(f"Encontrados {len(measurement_methods)} métodos Measurement")
+        
+        logger.info("Buscando métodos Aggregation...")
+        aggregation_methods = list(AggregationDQMethod.objects.using('default').filter(
+            associatedTo__metric__factor__dq_model_id=dq_model_id
+        ))
+        logger.info(f"Encontrados {len(aggregation_methods)} métodos Aggregation")
+        
+        all_methods = measurement_methods + aggregation_methods
+        logger.info(f"Total métodos aplicados: {len(all_methods)}\n")
+
+        # 3. Obtener resultados ejecutados
+        logger.info("Buscando resultados ejecutados en metadata_db...")
+        executed_results = list(DQMethodExecutionResult.objects.using('metadata_db').filter(
+            execution=execution
+        ).select_related('content_type'))
+        logger.info(f"Total resultados encontrados: {len(executed_results)}\n")
+
+        # 4. Obtener ContentTypes
+        logger.info("Obteniendo ContentTypes...")
+        measurement_type = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod)
+        aggregation_type = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
+        logger.info(f"ContentType para Measurement: {measurement_type.id}")
+        logger.info(f"ContentType para Aggregation: {aggregation_type.id}\n")
+
+        # 5. Loggear resultados encontrados
+        logger.info("Resultados individuales encontrados:")
+        for result in executed_results:
+            logger.info(f"ID: {result.id} | ContentType: {result.content_type_id} | ObjectID: {result.object_id} | Método: {result.content_type.model}")
+
+        # 6. Mapear resultados
+        executed_map = {}
+        for r in executed_results:
+            if r.content_type_id in [measurement_type.id, aggregation_type.id]:
+                executed_map[(r.content_type_id, r.object_id)] = r
+                logger.info(f"Mapeado: ({r.content_type_id}, {r.object_id}) -> Resultado ID {r.id}")
+        
+        logger.info(f"\nTotal resultados mapeados: {len(executed_map)}\n")
+
+        # 7. Procesar métodos
+        formatted_results = []
+        logger.info("Procesando métodos...")
+        
+        for method in all_methods:
+            method_type = 'MeasurementDQMethod' if isinstance(method, MeasurementDQMethod) else 'AggregationDQMethod'
+            content_type_id = measurement_type.id if method_type == 'MeasurementDQMethod' else aggregation_type.id
+            key = (content_type_id, method.id)
+            
+            logger.info(f"\nProcesando método ID {method.id} ({method_type})")
+            logger.info(f"Clave de búsqueda: {key}")
+
+            if key in executed_map:
+                result = executed_map[key]
+                logger.info(f"Resultado ENCONTRADO - ID: {result.id}")
+                logger.info(f"Detalles: {result.details}")
+                
+                formatted_results.append({
+                    'method_id': method.id,
+                    'method_name': method.name,
+                    'method_type': method_type,
+                    'executed_at': result.executed_at.isoformat(),
+                    'dq_value': result.dq_value,
+                    'execution_time': result.details.get('execution_time'),
+                    'columns': result.details.get('columns'),
+                    'sample_data': result.details.get('sample_data'),
+                    'query': result.details.get('query'),
+                    'status': 'completed'
+                })
+            else:
+                logger.info("Resultado NO encontrado (pendiente)")
+                formatted_results.append({
+                    'method_id': method.id,
+                    'method_name': method.name,
+                    'method_type': method_type,
+                    'status': 'pending'
+                })
+
+        # 8. Estadísticas finales
+        completed = len([r for r in formatted_results if r['status'] == 'completed'])
+        logger.info(f"\n{'='*50}")
+        logger.info(f"RESUMEN FINAL")
+        logger.info(f"Métodos completados: {completed}")
+        logger.info(f"Métodos pendientes: {len(formatted_results) - completed}")
+        logger.info(f"Total métodos: {len(formatted_results)}")
+        logger.info(f"{'='*50}\n")
+
+        return Response({
+            'execution_id': str(execution.execution_id),
+            'execution_status': execution.status,
+            'started_at': execution.started_at.isoformat(),
+            'completed_at': execution.completed_at.isoformat() if execution.completed_at else None,
+            'progress': {
+                'completed': completed,
+                'pending': len(formatted_results) - completed,
+                'total': len(formatted_results)
+            },
+            'results': sorted(formatted_results, key=lambda x: (0 if x['status'] == 'completed' else 1, x['method_id']))
+        })      
+        
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/latest-results')
+    def get_latest_results___(self, request, dq_model_id=None):
+        """
+        Obtiene los últimos resultados para un DQModel, mostrando ejecutados y pendientes
+        """
+        # Obtener la ejecución activa más reciente (completada o en progreso)
+        execution = DQModelExecution.objects.using('metadata_db').filter(
+            dq_model_id=dq_model_id
+        ).order_by('-started_at').first()
+
+        if not execution:
+            return Response(
+                {"error": "No hay ejecuciones registradas para este modelo"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Obtener todos los métodos aplicados del modelo desde la base default
+        measurement_methods = MeasurementDQMethod.objects.using('default').filter(
+            associatedTo__metric__factor__dq_model_id=dq_model_id
+        )
+        aggregation_methods = AggregationDQMethod.objects.using('default').filter(
+            associatedTo__metric__factor__dq_model_id=dq_model_id
+        )
+        all_methods = list(measurement_methods) + list(aggregation_methods)
+        
+        # Obtener TODOS los resultados de ejecución desde metadata_db
+        executed_results = DQMethodExecutionResult.objects.using('metadata_db').filter(
+            execution=execution
+        ).select_related('content_type')
+        
+        # Mapear content_types para búsqueda eficiente
+        measurement_type = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod).id
+        aggregation_type = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod).id
+
+        # Crear diccionario de resultados ejecutados {(content_type_id, object_id): result}
+        executed_map = {
+            (r.content_type_id, r.object_id): r 
+            for r in executed_results
+            if r.content_type_id in [measurement_type, aggregation_type]
+        }
+
+        # Procesar todos los métodos
+        formatted_results = []
+        for method in all_methods:
+            content_type_id = measurement_type if isinstance(method, MeasurementDQMethod) else aggregation_type
+            key = (content_type_id, method.id)
+            
+            if key in executed_map:
+                # Método ejecutado
+                result = executed_map[key]
+                formatted_results.append({
+                    'method_id': method.id,
+                    'method_name': method.name,
+                    'method_type': method.__class__.__name__,
+                    'executed_at': result.executed_at.isoformat(),
+                    'dq_value': result.dq_value,
+                    'execution_time': result.details.get('execution_time'),
+                    'columns': result.details.get('columns'),
+                    'sample_data': result.details.get('sample_data'),
+                    'query': result.details.get('query'),
+                    'status': 'completed'
+                })
+            else:
+                # Método pendiente
+                formatted_results.append({
+                    'method_id': method.id,
+                    'method_name': method.name,
+                    'method_type': method.__class__.__name__,
+                    'status': 'pending'
+                })
+
+        # Ordenar por status (completed primero) y luego por method_id
+        formatted_results.sort(key=lambda x: (0 if x['status'] == 'completed' else 1, x['method_id']))
+        
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Dentro del método, antes del return:
+        logger.info(f"Execution found: {execution.execution_id}")
+        logger.info(f"Total methods: {len(all_methods)}")
+        logger.info(f"Executed results: {len(executed_map)}")
+        logger.info(f"Content Types - Measurement: {measurement_type}, Aggregation: {aggregation_type}")
+
+        return Response({
+            'execution_id': str(execution.execution_id),
+            'execution_status': execution.status,
+            'started_at': execution.started_at.isoformat(),
+            'completed_at': execution.completed_at.isoformat() if execution.completed_at else None,
+            'progress': {
+                'completed': len([r for r in formatted_results if r['status'] == 'completed']),
+                'pending': len([r for r in formatted_results if r['status'] == 'pending']),
+                'total': len(formatted_results)
+            },
+            'results': formatted_results
+        })
+    
+    
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/latest-results')
+    def get_latest_results__(self, request, dq_model_id=None):
+        """
+        Obtiene los últimos resultados para un DQModel, incluyendo ejecuciones en progreso
+        """
+        # Obtener la ejecución más reciente (completada o en progreso)
+        execution = DQModelExecution.objects.using('metadata_db').filter(
+            dq_model_id=dq_model_id
+        ).order_by('-started_at').first()
+
+        if not execution:
+            return Response(
+                {"error": "No hay ejecuciones registradas para este modelo"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Obtener todos los métodos aplicados del modelo
+        total_methods = list(
+            MeasurementDQMethod.objects.using('default').filter(
+                associatedTo__metric__factor__dq_model_id=dq_model_id
+            ).values_list('id', flat=True)
+        ) + list(
+            AggregationDQMethod.objects.using('default').filter(
+                associatedTo__metric__factor__dq_model_id=dq_model_id
+            ).values_list('id', flat=True)
+        )
+
+        # Obtener resultados existentes
+        results = execution.method_results.using('metadata_db').select_related('content_type').all()
+        
+        # Procesar resultados
+        formatted_results = []
+        for result in results:
+            try:
+                method = result.resolved_applied_method
+                formatted_results.append({
+                    'method_id': result.object_id,
+                    'method_name': method.name,
+                    'method_type': method.__class__.__name__,
+                    'executed_at': result.executed_at.isoformat(),
+                    'dq_value': result.dq_value,
+                    'execution_time': result.details.get('execution_time'),
+                    'columns': result.details.get('columns'),
+                    'sample_data': result.details.get('sample_data'),
+                    'status': 'completed'
+                })
+            except Exception as e:
+                # Si hay error al resolver el método, lo omitimos
+                continue
+
+        # Identificar métodos pendientes
+        executed_method_ids = [r.object_id for r in results]
+        pending_methods = list(set(total_methods) - set(executed_method_ids))
+        
+        # Añadir métodos pendientes a la respuesta
+        for method_id in pending_methods:
+            try:
+                # Buscar el método para obtener sus detalles
+                method = (MeasurementDQMethod.objects.using('default').filter(id=method_id).first() or 
+                        AggregationDQMethod.objects.using('default').filter(id=method_id).first())
+                
+                if method:
+                    formatted_results.append({
+                        'method_id': method_id,
+                        'method_name': method.name,
+                        'method_type': method.__class__.__name__,
+                        'status': 'pending'
+                    })
+            except:
+                continue
+
+        return Response({
+            'execution_id': str(execution.execution_id),
+            'execution_status': execution.status,
+            'started_at': execution.started_at.isoformat(),
+            'completed_at': execution.completed_at.isoformat() if execution.completed_at else None,
+            'progress': {
+                'completed': len(executed_method_ids),
+                'pending': len(pending_methods),
+                'total': len(total_methods)
+            },
+            'results': formatted_results
+        })
+    
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/latest-results')
+    def get_latest_results0(self, request, dq_model_id=None):
+        """
+        Obtiene los últimos resultados para un DQModel
+        """
+        # Obtener la última ejecución completada
+        execution = DQModelExecution.objects.using('metadata_db').filter(
+            dq_model_id=dq_model_id,
+            status='completed'
+        ).order_by('-completed_at').first()
+
+        if not execution:
+            return Response(
+                {"error": "No hay ejecuciones completadas para este modelo"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        results = execution.method_results.using('metadata_db').select_related('content_type').all()
+        
+        formatted_results = []
+        for result in results:
+            method = result.resolved_applied_method
+            formatted_results.append({
+                'method_id': result.object_id,
+                'method_name': method.name,
+                'method_type': method.__class__.__name__,
+                'executed_at': result.executed_at.isoformat(),
+                'dq_value': result.dq_value,
+                'execution_time': result.details.get('execution_time'),
+                'columns': result.details.get('columns'),
+                'sample_data': result.details.get('sample_data')
+            })
+
+        return Response({
+            'execution_id': str(execution.execution_id),
+            'started_at': execution.started_at.isoformat(),
+            'completed_at': execution.completed_at.isoformat(),
+            'results': formatted_results
+        })
+        
+        
+    @action(detail=False, methods=['get'], url_path='applied-dq-methods/(?P<method_id>\d+)/results')
+    def get_method_results(self, request, method_id=None):
+        """
+        Obtiene resultados históricos de un método desde metadata_db
+        """
+        # Determinar tipo de método (desde default)
+        try:
+            method = MeasurementDQMethod.objects.using('default').get(id=method_id)
+            content_type = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod)
+        except MeasurementDQMethod.DoesNotExist:
+            method = get_object_or_404(AggregationDQMethod.objects.using('default'), id=method_id)
+            content_type = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
+        
+        # Resultados desde metadata_db
+        results = DQMethodExecutionResult.objects.using('metadata_db').filter(
+            content_type=content_type,
+            object_id=method_id
+        ).select_related('execution').order_by('-executed_at')
+        
+        return Response({
+            'method_id': method_id,
+            'method_name': method.name,
+            'method_type': method.__class__.__name__,
+            'results': [self._format_result(r) for r in results]
+        })
+    
+    def _format_result(self, result):
+        """Formatea un resultado individual"""
+        return {
+            'execution_id': str(result.execution.execution_id),
+            'dq_model_id': result.execution.dq_model_id,
+            'executed_at': result.executed_at.isoformat(),
+            'dq_value': result.dq_value,
+            'details': result.details
+        }
+
+   
+        
 # views.py
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods

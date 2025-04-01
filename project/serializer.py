@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from dqmodel.models import DQMethodExecutionResult
 from .models import DataAtHand, DataSchema, PrioritizedDQProblem, Project
 from django.core.exceptions import ValidationError
 
@@ -79,3 +81,13 @@ class DataSchemaSerializer(serializers.ModelSerializer):
     class Meta:
         model = DataSchema
         fields = '__all__'
+        
+class DQMethodExecutionResultSerializer(serializers.ModelSerializer):
+    execution_time = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DQMethodExecutionResult
+        fields = '__all__'
+    
+    def get_execution_time(self, obj):
+        return obj.details.get('execution_time')

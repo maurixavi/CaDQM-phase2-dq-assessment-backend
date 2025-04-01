@@ -1,7 +1,10 @@
+import uuid
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db.models import JSONField  # Django 3.1 y versiones posteriores
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
     
 class DQModel(models.Model):
     STATUS_CHOICES = [
@@ -281,3 +284,68 @@ class PrioritizedDqProblem(models.Model):
     class Meta:
         unique_together = ('dq_model', 'description')  # Asegura que no haya duplicados de problemas dentro de un DQModel
         
+
+
+# EXECUTION ---------------------------
+
+class DQModelExecution(models.Model):
+    execution_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='executions')
+    dq_model_id = models.IntegerField()  # Cambiado de ForeignKey a IntegerField
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=50, default='in_progress')  # in_progress/completed/failed
+    
+    class Meta:
+        db_table = 'dq_modelexecution'  # Opcional: personaliza nombre de tabla
+        managed = True  # Asegúrate de que Django maneje las migraciones
+    
+    @property
+    def dq_model(self):
+        """Acceso al modelo relacionado en la base 'default'"""
+        from dqmodel.models import DQModel
+        return DQModel.objects.using('default').get(pk=self.dq_model_id)
+    
+
+class DQMethodExecutionResult(models.Model):
+    execution = models.ForeignKey(DQModelExecution, on_delete=models.CASCADE, related_name='method_results')
+    #applied_method = models.ForeignKey(MeasurementDQMethod, on_delete=models.CASCADE, null=True, blank=True)
+    #applied_aggregation = models.ForeignKey(AggregationDQMethod, on_delete=models.CASCADE, null=True, blank=True)
+    #content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    
+    # Campo requerido para GenericForeignKey (DEBE ser ForeignKey)
+    content_type = models.ForeignKey(
+        'contenttypes.ContentType',
+        on_delete=models.CASCADE,
+        db_constraint=False  # para evitar problemas entre bases de datos
+    )
+      
+    object_id = models.PositiveIntegerField()
+    applied_method = GenericForeignKey('content_type', 'object_id') 
+    
+    executed_at = models.DateTimeField(auto_now_add=True)
+    #duration_seconds = models.FloatField()
+    dq_value = models.FloatField()
+    # status = models.CharField(max_length=20)  # success/failed
+    details = models.JSONField(default=dict)
+    
+    # Campos para DQ assessment
+    #assessment_threshold   
+    #evaluation_score = models.CharField(max_length=100, null=True, blank=True)  # 'passed', 'failed', 'good?' 'excelent' ?
+    #evaluated_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'dq_method_execution_result'  # Opcional
+        managed = True
+        indexes = [
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['execution']),
+        ]
+        
+    @property
+    def resolved_applied_method(self):
+        """Resuelve el método aplicado desde la base correcta"""
+        model_class = self.content_type.model_class()
+        return model_class.objects.using('default').get(pk=self.object_id)
+
+
