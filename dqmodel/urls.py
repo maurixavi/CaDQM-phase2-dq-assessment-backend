@@ -167,4 +167,18 @@ urlpatterns = [
         DQExecutionResultViewSet.as_view({'get': 'get_specific_method_execution_result'}),
         name='specific-method-execution-result'
     ),
+    
+    path(
+        'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-result/<int:result_id>/thresholds/',
+        DQExecutionResultViewSet.as_view({'patch': 'update_execution_result_thresholds'}),
+        name='update-execution-result-thresholds'
+    ),
+    
+    path(
+        'dqmodels/<int:dq_model_id>/execution-results/<uuid:execution_id>/',
+        DQExecutionResultViewSet.as_view({'get': 'get_dq_model_execution_results'}),
+        name='dqmodel-execution-results'
+    ),
+    
+    
 ]

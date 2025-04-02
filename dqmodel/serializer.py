@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod, PrioritizedDqProblem
+from .models import DQMethodExecutionResult, DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod, PrioritizedDqProblem
 
 
 class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
@@ -445,3 +445,4 @@ class DQModelSerializer(serializers.ModelSerializer):
         # Esto puede ser complejo y requerir manejo adicional de relaciones
 
         return instance
+

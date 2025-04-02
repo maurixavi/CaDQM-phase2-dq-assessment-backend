@@ -329,6 +329,12 @@ class DQMethodExecutionResult(models.Model):
     # status = models.CharField(max_length=20)  # success/failed
     details = models.JSONField(default=dict)
     
+    # Campos para DQ assessment (descomentar y modificar)
+    assessment_thresholds = models.JSONField(default=list, blank=True)  # Almacena los umbrales definidos
+    assessment_score = models.CharField(max_length=100, null=True, blank=True)  # Cambiado de evaluation_score
+    assessed_at = models.DateTimeField(null=True, blank=True)  # Cambiado de evaluated_at
+    is_passing = models.BooleanField(null=True, blank=True)
+    
     # Campos para DQ assessment
     #assessment_threshold   
     #evaluation_score = models.CharField(max_length=100, null=True, blank=True)  # 'passed', 'failed', 'good?' 'excelent' ?
@@ -347,5 +353,30 @@ class DQMethodExecutionResult(models.Model):
         """Resuelve el método aplicado desde la base correcta"""
         model_class = self.content_type.model_class()
         return model_class.objects.using('default').get(pk=self.object_id)
+    
+    def assess(self, thresholds=None):
+        """
+        Evalúa el resultado contra los umbrales proporcionados o los almacenados
+        """
+        if thresholds:
+            self.assessment_thresholds = thresholds
+        
+        if not self.assessment_thresholds:
+            raise ValueError("No assessment thresholds defined")
+        
+        value = self.dq_value
+        self.assessed_at = timezone.now()
+        
+        for threshold in self.assessment_thresholds:
+            if threshold['min'] <= value <= threshold['max']:
+                self.assessment_score = threshold['name']
+                self.is_passing = threshold.get('is_passing', True)
+                self.save()
+                return True
+        
+        self.assessment_score = 'Not Assessed'
+        self.is_passing = False
+        self.save()
+        return False
 
 
