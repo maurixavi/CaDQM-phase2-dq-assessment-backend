@@ -65,6 +65,15 @@ import psycopg2.extras
 from decimal import Decimal
 import json
 
+import sqlparse
+import psycopg2
+import time
+from decimal import Decimal
+from django.utils import timezone
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework import status
+import re
 
 # AI SUGGESTIONS GENERATION
 @api_view(['POST'])
@@ -448,6 +457,34 @@ class DQModelViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['patch', 'put'], url_path='applied-dq-methods/(?P<applied_method_id>\d+)')
+    def update_applied_method(self, request, pk=None, applied_method_id=None):
+        try:
+            # Buscar primero en Measurement
+            try:
+                method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model_id=pk
+                )
+                serializer = MeasurementDQMethodSerializer(method, data=request.data, partial=True)
+            except MeasurementDQMethod.DoesNotExist:
+                # Si no es Measurement, buscar en Aggregation
+                method = AggregationDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model_id=pk
+                )
+                serializer = AggregationDQMethodSerializer(method, data=request.data, partial=True)
+            
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+            
+        except (MeasurementDQMethod.DoesNotExist, AggregationDQMethod.DoesNotExist):
+            return Response(
+                {"error": "Applied DQ method not found in this model"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
     """
     Casos de Uso EXPLAIN ANALYZE: 
     Caso 1: Métodos Agregados (COUNT, AVG, etc.)
@@ -465,15 +502,716 @@ class DQModelViewSet(viewsets.ModelViewSet):
     rows_affected = 1    # (COUNT devuelve 1 fila)
     total_records = 1200 # (filas procesadas en el JOIN)
     """   
-    def parse_explain_analyze(self, explain_output):
+    def parse_explain_analyze2(self, explain_output):
         """Extrae 'actual rows' del EXPLAIN ANALYZE"""
         for line in explain_output:
             if "actual rows" in line[0]:
                 return int(line[0].split("rows=")[1].split()[0])
         return 0   
 
+    # Función para extraer las columnas de una consulta SQL
+    def extract_columns_from_query(query):
+        parsed = sqlparse.parse(query)
+        columns = []
+        for stmt in parsed:
+            for token in stmt.tokens:
+                if isinstance(token, sqlparse.sql.Identifier):
+                    columns.append(token.get_real_name())
+        return columns
+
     @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
     def execute_applied_method(self, request, pk=None, applied_method_id=None):
+        """
+        Ejecuta un método aplicado con soporte para:
+        - Métodos de agregación (un solo valor DQ)
+        - Métodos por fila (múltiples valores DQ)
+        """
+        debug_info = []
+        response_data = {
+            'status': 'started',
+            'dq_model_id': pk,
+            'method_id': applied_method_id,
+            'debug_info': debug_info
+        }
+
+        try:
+            start_time = timezone.now()
+            debug_info.append(f"Inicio ejecución: {start_time}")
+            
+            # 1. Obtener el modelo y método
+            dq_model = get_object_or_404(DQModel, pk=pk)
+            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version})")
+
+            # Buscar el método aplicado
+            try:
+                applied_method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model=dq_model
+                )
+                method_type = 'measurement'
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    applied_method = AggregationDQMethod.objects.get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model=dq_model
+                    )
+                    method_type = 'aggregation'
+                except AggregationDQMethod.DoesNotExist:
+                    debug_info.append("Método no encontrado")
+                    return Response(
+                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
+
+            # 2. Conectar a la base de datos y ejecutar
+            try:
+                conn = psycopg2.connect(
+                    dbname='data_at_hand_v01',
+                    user='postgres',
+                    password='password',
+                    host='localhost',
+                    port=5432
+                )
+                debug_info.append("Conexión a PostgreSQL establecida")
+
+                # Medición de tiempo de ejecución
+                query_start_time = time.time()
+                
+                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                    cursor.execute(applied_method.algorithm)
+                    columns = [desc[0] for desc in cursor.description]
+                    raw_rows = cursor.fetchall()
+                    
+                    # Convertir Decimal a float para serialización JSON
+                    def convert_decimals(obj):
+                        if isinstance(obj, Decimal):
+                            return float(obj)
+                        elif isinstance(obj, dict):
+                            return {k: convert_decimals(v) for k, v in obj.items()}
+                        elif isinstance(obj, (list, tuple)):
+                            return [convert_decimals(item) for item in obj]
+                        return obj
+                    
+                    rows = [convert_decimals(dict(row)) for row in raw_rows]
+                    
+                    query_time = time.time() - query_start_time
+                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
+                    
+                    # 3. Determinar el tipo de resultado y procesarlo
+                    is_aggregation = len(rows) <= 1  # Si es 0 o 1 fila, lo consideramos agregación
+
+                    if is_aggregation:
+                        # Método de agregación - obtener el valor DQ inteligentemente
+                        if not rows:
+                            result_value = None
+                        else:
+                            # Estrategia para encontrar el valor DQ:
+                            # 1. Buscar columna llamada 'dq_value'
+                            # 2. Si no existe, usar la última columna
+                            # 3. Si tampoco, usar el primer valor
+                            row = rows[0]
+                            if 'dq_value' in row:
+                                result_value = row['dq_value']
+                            elif columns:
+                                result_value = row.get(columns[-1])  # Última columna por defecto
+                            else:
+                                result_value = next(iter(row.values())) if row else None
+                        
+                        result_type = 'single'
+                        
+                        processed_results = {
+                            'applied_dq_method_name': applied_method.name,
+                            'applied_dq_method_id': applied_method.id,
+                            'applied_to': applied_method.appliedTo,
+                            'execution_time_seconds': round(query_time, 4),
+                            'dq_value': result_value,
+                            'value_source': 'explicit_dq_column' if 'dq_value' in (rows[0] if rows else {}) else 'last_column'
+                        }
+                    else:
+                        # Método por fila - múltiples resultados
+                        result_type = 'multiple'
+                        
+                        # Asegurar que cada fila tenga un ID único
+                        rows_with_ids = []
+                        for idx, row in enumerate(rows, start=1):
+                            if 'id' not in row:
+                                row['row_id'] = idx
+                            rows_with_ids.append(row)
+                        
+                        # Determinar qué columna es el valor DQ
+                        dq_column = None
+                        if 'dq_value' in columns:
+                            dq_column = 'dq_value'
+                        elif columns:
+                            dq_column = columns[-1]  # Última columna por defecto
+                        
+                        processed_results = {
+                            'total_rows': len(rows_with_ids),
+                            'columns': columns,
+                            'dq_column': dq_column,  # Indicar qué columna se usó como DQ value
+                            'sample_data': rows_with_ids[:5],  # Mostrar muestra reducida
+                            'applied_dq_method_name': applied_method.name,
+                            'applied_dq_method_id': applied_method.id,
+                            'applied_to': applied_method.appliedTo
+                        }
+                        
+                        result_value = {
+                            'rows': rows_with_ids,
+                            'columns': columns,
+                            'dq_column': dq_column
+                        }
+
+                    # 4. Obtener estadísticas de ejecución
+                    cursor.execute(f"EXPLAIN ANALYZE {applied_method.algorithm}")
+                    explain_output = cursor.fetchall()
+                    total_records = self.parse_explain_analyze(explain_output)
+                    debug_info.append(f"Total de registros recorridos: {total_records}")
+
+                    # 5. Guardar resultados en metadata_db
+                    try:
+                        DQExecutionResultService.save_execution_result(
+                            dq_model_id=pk,
+                            applied_method=applied_method,
+                            result_value=result_value if is_aggregation else result_value,
+                            result_type=result_type,
+                            execution_details={
+                                'query_time_seconds': query_time,
+                                'rows_affected': cursor.rowcount,
+                                'total_records': total_records,
+                                'query': applied_method.algorithm,
+                                'columns': columns
+                            }
+                        )
+                    except Exception as e:
+                        debug_info.append(f"Advertencia al guardar resultados: {str(e)}")
+
+                    # 6. Construir respuesta
+                    response_data.update({
+                        'status': 'success',
+                        'result_type': result_type,
+                        'results': processed_results,
+                        'execution_details': {
+                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
+                            'query_time_seconds': round(query_time, 4),
+                            'rows_affected': cursor.rowcount,
+                            'total_records': total_records
+                        },
+                        'debug_info': debug_info
+                    })
+
+                    return Response(response_data)
+
+            except Exception as e:
+                debug_info.append(f"Error ejecutando consulta: {str(e)}")
+                return Response(
+                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            debug_info.append(f"Error inesperado: {str(e)}")
+            return Response(
+                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                debug_info.append("Conexión cerrada")
+            
+                
+    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
+    def execute_applied_method_______(self, request, pk=None, applied_method_id=None):
+        """
+        Ejecuta un método aplicado con soporte para:
+        - Métodos de agregación (un solo valor DQ)
+        - Métodos por fila (múltiples valores DQ)
+        """
+        debug_info = []
+        response_data = {
+            'status': 'started',
+            'dq_model_id': pk,
+            'method_id': applied_method_id,
+            'debug_info': debug_info
+        }
+
+        try:
+            start_time = timezone.now()
+            debug_info.append(f"Inicio ejecución: {start_time}")
+            
+            # 1. Obtener el modelo y método
+            dq_model = get_object_or_404(DQModel, pk=pk)
+            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version})")
+
+            # Buscar el método aplicado
+            try:
+                applied_method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model=dq_model
+                )
+                method_type = 'measurement'
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    applied_method = AggregationDQMethod.objects.get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model=dq_model
+                    )
+                    method_type = 'aggregation'
+                except AggregationDQMethod.DoesNotExist:
+                    debug_info.append("Método no encontrado")
+                    return Response(
+                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
+
+            # 2. Conectar a la base de datos y ejecutar
+            try:
+                conn = psycopg2.connect(
+                    dbname='data_at_hand_v01',
+                    user='postgres',
+                    password='password',
+                    host='localhost',
+                    port=5432
+                )
+                debug_info.append("Conexión a PostgreSQL establecida")
+
+                # Medición de tiempo de ejecución
+                query_start_time = time.time()
+                
+                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                    cursor.execute(applied_method.algorithm)
+                    columns = [desc[0] for desc in cursor.description]
+                    raw_rows = cursor.fetchall()
+                    
+                    # Convertir Decimal a float para serialización JSON
+                    def convert_decimals(obj):
+                        if isinstance(obj, Decimal):
+                            return float(obj)
+                        elif isinstance(obj, dict):
+                            return {k: convert_decimals(v) for k, v in obj.items()}
+                        elif isinstance(obj, (list, tuple)):
+                            return [convert_decimals(item) for item in obj]
+                        return obj
+                    
+                    rows = [convert_decimals(dict(row)) for row in raw_rows]
+                    
+                    query_time = time.time() - query_start_time
+                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
+                    
+                    # 3. Determinar el tipo de resultado y procesarlo
+                    is_aggregation = len(rows) == 1 and 'dq_value' in rows[0]
+                    
+                    
+                    if is_aggregation:
+                        # Método de agregación - un solo valor DQ
+                        result_value = rows[0].get('dq_value', rows[0].get(columns[0]))
+                        result_type = 'single'
+                        
+                        processed_results = {
+                            'applied_dq_method_name': applied_method.name,
+                            'applied_dq_method_id': applied_method.id,
+                            'applied_to': applied_method.appliedTo,
+                            'execution_time_seconds': round(query_time, 4),
+                            'dq_value': result_value
+                        }
+                    else:
+                        # Método por fila - múltiples resultados
+                        result_value = {
+                            'rows': rows,
+                            'columns': columns
+                        }
+                        result_type = 'multiple'
+                        
+                        processed_results = {
+                            'rows_returned': len(rows),
+                            'sample_data': rows[:5] if len(rows) > 5 else rows
+                        }
+
+                    # 4. Obtener estadísticas de ejecución
+                    cursor.execute(f"EXPLAIN ANALYZE {applied_method.algorithm}")
+                    explain_output = cursor.fetchall()
+                    total_records = self.parse_explain_analyze(explain_output)
+                    debug_info.append(f"Total de registros recorridos: {total_records}")
+
+                    # 5. Guardar resultados en metadata_db
+                    try:
+                        DQExecutionResultService.save_execution_result(
+                            dq_model_id=pk,
+                            applied_method=applied_method,
+                            result_value=result_value if is_aggregation else result_value,
+                            result_type=result_type,
+                            execution_details={
+                                'query_time_seconds': query_time,
+                                'rows_affected': cursor.rowcount,
+                                'total_records': total_records,
+                                'query': applied_method.algorithm,
+                                'columns': columns
+                            }
+                        )
+                    except Exception as e:
+                        debug_info.append(f"Advertencia al guardar resultados: {str(e)}")
+
+                    # 6. Construir respuesta
+                    response_data.update({
+                        'status': 'success',
+                        'result_type': result_type,
+                        'results': processed_results,
+                        'execution_details': {
+                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
+                            'query_time_seconds': round(query_time, 4),
+                            'rows_affected': cursor.rowcount,
+                            'total_records': total_records
+                        },
+                        'debug_info': debug_info
+                    })
+
+                    return Response(response_data)
+
+            except Exception as e:
+                debug_info.append(f"Error ejecutando consulta: {str(e)}")
+                return Response(
+                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            debug_info.append(f"Error inesperado: {str(e)}")
+            return Response(
+                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                debug_info.append("Conexión cerrada")
+    
+    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
+    def execute_applied_method_FUNCIONA_SINROWS(self, request, pk=None, applied_method_id=None):
+        """
+        Ejecuta un método aplicado con manejo explícito de tipos Decimal
+        """
+        debug_info = []
+        response_data = {
+            'status': 'started',
+            'dq_model_id': pk,
+            'method_id': applied_method_id,
+            'debug_info': debug_info
+        }
+
+        try:
+            start_time = timezone.now()
+            debug_info.append(f"Inicio ejecución: {start_time}")
+            
+            # 1. Obtener el modelo y método
+            dq_model = get_object_or_404(DQModel, pk=pk)
+            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version})")
+
+            # Buscar el método aplicado
+            try:
+                applied_method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model=dq_model
+                )
+                method_type = 'measurement'
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    applied_method = AggregationDQMethod.objects.get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model=dq_model
+                    )
+                    method_type = 'aggregation'
+                except AggregationDQMethod.DoesNotExist:
+                    debug_info.append("Método no encontrado")
+                    return Response(
+                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
+
+            # 2. Conectar a la base de datos y ejecutar
+            try:
+                conn = psycopg2.connect(
+                    dbname='data_at_hand_v01',
+                    user='postgres',
+                    password='password',
+                    host='localhost',
+                    port=5432
+                )
+                debug_info.append("Conexión a PostgreSQL establecida")
+
+                # Medición de tiempo de ejecución
+                query_start_time = time.time()
+                
+                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                    cursor.execute(applied_method.algorithm)
+                    columns = [desc[0] for desc in cursor.description]
+
+                    # Obtener y convertir los resultados
+                    rows = [dict(row) for row in cursor.fetchall()]
+                    
+                    query_time = time.time() - query_start_time
+                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
+
+                    # 2. Obtener total_records con EXPLAIN ANALYZE (número total de registros procesados)
+                    cursor.execute(f"EXPLAIN ANALYZE {applied_method.algorithm}")
+                    explain_output = cursor.fetchall()
+
+                    # Parsear el EXPLAIN ANALYZE para obtener el número total de registros procesados
+                    total_records = self.parse_explain_analyze(explain_output)
+                    debug_info.append(f"Total de registros recorridos: {total_records}")
+
+                    # Guardar resultados en metadata_db
+                    try:
+                        DQExecutionResultService.save_execution_result(
+                            dq_model_id=pk,
+                            applied_method=applied_method,
+                            result_value=rows[0].get(columns[0]),
+                            execution_details={
+                                'query_time_seconds': query_time,
+                                'rows_affected': cursor.rowcount,
+                                'applied_to': applied_method.appliedTo,
+                                'query': applied_method.algorithm,
+                                'total_records': total_records  # Aquí guardamos el total de registros
+                            }
+                        )
+                    except Exception as e:
+                        debug_info.append(f"Advertencia al guardar resultados: {str(e)}")
+
+                    # Procesar resultados para la respuesta
+                    processed_results = []
+                    for row in rows:
+                        processed_row = {
+                            'applied_dq_method_name': applied_method.name,
+                            'applied_dq_method_id': applied_method.id,
+                            'applied_to': applied_method.appliedTo,
+                            'execution_time_seconds': round(query_time, 4),
+                            'dq_value': row.get(columns[0])
+                        }
+                        processed_results.append(processed_row)
+
+                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
+
+                    response_data.update({
+                        'status': 'success',
+                        'dq_results': processed_results,
+                        'execution_details': {
+                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
+                            'query_time_seconds': round(query_time, 4),
+                            'rows_affected': cursor.rowcount,
+                            'total_records': total_records  # Agregar el total de registros procesados
+                        },
+                        'debug_info': debug_info
+                    })
+
+                    return Response(response_data)
+
+            except Exception as e:
+                debug_info.append(f"Error ejecutando consulta: {str(e)}")
+                return Response(
+                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            debug_info.append(f"Error inesperado: {str(e)}")
+            return Response(
+                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                debug_info.append("Conexión cerrada")
+
+    def parse_explain_analyze(self, explain_output):
+        total_records = None
+        for line in explain_output:
+            if 'Total runtime' in line[0]:  # Verifica la línea con el tiempo de ejecución
+                continue
+            if 'rows' in line[0]:
+                # Buscamos el rango de filas, si es que está presente
+                match = re.search(r'(\d+(?:\.\d+)?)\.\.(\d+(?:\.\d+)?)', line[0])
+                if match:
+                    # Si hay un rango de filas, tomamos el primer valor del rango
+                    total_records = int(float(match.group(1)))  # Convertimos el primer valor del rango a entero
+                else:
+                    # Si no hay rango, simplemente extraemos el número de filas como entero
+                    try:
+                        total_records = int(line[0].split('=')[1].strip())
+                    except ValueError:
+                        total_records = 0  # Si no podemos convertir, lo dejamos en 0
+                break
+        return total_records if total_records is not None else 0
+
+    # Función para analizar la salida de EXPLAIN ANALYZE y obtener el número total de registros procesados
+    def parse_explain_analyzemal(self, explain_output):
+        total_records = None
+        for line in explain_output:
+            if 'Total runtime' in line[0]:  # Verifica la línea con el tiempo de ejecución
+                continue
+            if 'rows' in line[0]:
+                total_records = int(line[0].split('=')[1].strip())
+                break
+        return total_records if total_records is not None else 0
+
+
+    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
+    def execute_applied_method_ULTIMO_BACKUP(self, request, pk=None, applied_method_id=None):
+        """
+        Ejecuta un método aplicado con manejo explícito de tipos Decimal
+        """
+        debug_info = []
+        response_data = {
+            'status': 'started',
+            'dq_model_id': pk,
+            'method_id': applied_method_id,
+            'debug_info': debug_info
+        }
+
+        try:
+            start_time = timezone.now()
+            debug_info.append(f"Inicio ejecución: {start_time}")
+            
+            # 1. Obtener el modelo y método
+            dq_model = get_object_or_404(DQModel, pk=pk)
+            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version}")
+
+            # Buscar el método aplicado
+            try:
+                applied_method = MeasurementDQMethod.objects.get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model=dq_model
+                )
+                method_type = 'measurement'
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    applied_method = AggregationDQMethod.objects.get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model=dq_model
+                    )
+                    method_type = 'aggregation'
+                except AggregationDQMethod.DoesNotExist:
+                    debug_info.append("Método no encontrado")
+                    return Response(
+                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
+            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
+
+            # 2. Conectar a la base de datos y ejecutar
+            try:
+                conn = psycopg2.connect(
+                    dbname='data_at_hand_v01',
+                    user='postgres',
+                    password='password',
+                    host='localhost',
+                    port=5432
+                )
+                debug_info.append("Conexión a PostgreSQL establecida")
+
+                # Medición de tiempo de ejecución
+                query_start_time = time.time()
+                
+                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+                    cursor.execute(applied_method.algorithm)
+                    columns = [desc[0] for desc in cursor.description]
+                    
+                    # Función para convertir Decimal a float
+                    def convert_decimals(obj):
+                        if isinstance(obj, Decimal):
+                            return float(obj)
+                        elif isinstance(obj, dict):
+                            return {k: convert_decimals(v) for k, v in obj.items()}
+                        elif isinstance(obj, (list, tuple)):
+                            return [convert_decimals(item) for item in obj]
+                        return obj
+                    
+                    # Obtener y convertir los resultados
+                    rows = [convert_decimals(dict(row)) for row in cursor.fetchall()]
+                    
+                    query_time = time.time() - query_start_time
+                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
+                    
+                    # 2. Obtener total_records EXACTO (filas procesadas)
+                    #cursor.execute(f"EXPLAIN ANALYZE {applied_method.algorithm}")
+                    #explain_output = cursor.fetchall()
+                    #total_records = self.parse_explain_analyze(explain_output)  # Función custom
+                    
+                    # Guardar resultados en metadata_db
+                    try:
+                        DQExecutionResultService.save_execution_result(
+                            dq_model_id=pk,
+                            applied_method=applied_method,
+                            result_value=rows[0].get(columns[0]),
+                            execution_details={
+                                'query_time_seconds': query_time,
+                                'rows_affected': cursor.rowcount,
+                                #columns: columns devuelve columna del resultado
+                                'applied_to': applied_method.appliedTo,
+                                'query': applied_method.algorithm
+                            }
+                        )
+                    except Exception as e:
+                        debug_info.append(f"Advertencia al guardar resultados: {str(e)}")
+
+                    # Procesar resultados para la respuesta
+                    processed_results = []
+                    for row in rows:
+                        processed_row = {
+                            'dq_metric_name': applied_method.name,
+                            'dq_metric_id': applied_method.id,
+                            'applied_to': applied_method.appliedTo,
+                            'execution_time_seconds': round(query_time, 4),
+                            'dq_value': row.get(columns[0])
+                        }
+                        processed_results.append(processed_row)
+
+                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
+                    
+                    response_data.update({
+                        'status': 'success',
+                        'dq_results': processed_results,
+                        'execution_details': {
+                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
+                            'query_time_seconds': round(query_time, 4),
+                            'rows_affected': cursor.rowcount
+                        },
+                        'debug_info': debug_info
+                    })
+                    
+                    return Response(response_data)
+
+            except Exception as e:
+                debug_info.append(f"Error ejecutando consulta: {str(e)}")
+                return Response(
+                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            debug_info.append(f"Error inesperado: {str(e)}")
+            return Response(
+                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                debug_info.append("Conexión cerrada")
+    
+    
+    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
+    def execute_applied_method_RESPLADOOO(self, request, pk=None, applied_method_id=None):
         """
         Ejecuta un método aplicado con manejo explícito de tipos Decimal
         """
@@ -848,7 +1586,297 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
                 ))
             }
         })
+        
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/applied-dq-methods/(?P<applied_method_id>\d+)/execution-result')
+    def get_specific_method_execution_result1430(self, request, dq_model_id=None, applied_method_id=None):
+        """
+        Obtiene resultados de ejecución para un método específico,
+        manejando tanto resultados simples como múltiples.
+        """
+        try:
+            # Buscar el método aplicado para validar que existe
+            try:
+                method = MeasurementDQMethod.objects.using('default').get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model_id=dq_model_id
+                )
+                content_type = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod)
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    method = AggregationDQMethod.objects.using('default').get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model_id=dq_model_id
+                    )
+                    content_type = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
+                except AggregationDQMethod.DoesNotExist:
+                    return Response(
+                        {"error": "Método no encontrado en este DQModel"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            # Buscar el resultado más reciente
+            result = DQMethodExecutionResult.objects.using('metadata_db').filter(
+                content_type=content_type,
+                object_id=applied_method_id
+            ).select_related('execution').order_by('-executed_at').first()
+
+            if not result:
+                return Response(
+                    {"error": "No se encontraron resultados de ejecución para este método"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Formatear respuesta según tipo de resultado
+            if result.result_type == 'multiple':
+                response_data = {
+                    'result_id': result.id,
+                    'dqmodel_execution_id': str(result.execution.execution_id),
+                    'dqmodel_execution_status': result.execution.status,
+                    'dq_model_id': dq_model_id,
+                    'method_id': applied_method_id,
+                    'method_name': method.name,
+                    'method_type': method.__class__.__name__,
+                    'executed_at': result.executed_at.isoformat(),
+                    'result_type': 'multiple',
+                    'results': {
+                        'total_rows': len(result.dq_value.get('rows', [])),
+                        'columns': result.dq_value.get('columns', []),
+                        'sample_data': result.dq_value.get('rows', [])[:5]  # Mostrar solo muestra
+                    },
+                    'execution_details': {
+                        'execution_time': result.details.get('execution_time'),
+                        'rows_affected': result.details.get('rows_affected'),
+                        'total_records': result.details.get('total_records')
+                    },
+                    'assessment_details': {
+                        'thresholds': result.assessment_thresholds,
+                        'score': result.assessment_score,
+                        'is_passing': result.is_passing,
+                        'assessed_at': result.assessed_at.isoformat() if result.assessed_at else None
+                    }
+                }
+            else:
+                response_data = {
+                    'result_id': result.id,
+                    'dqmodel_execution_id': str(result.execution.execution_id),
+                    'dqmodel_execution_status': result.execution.status,
+                    'dq_model_id': dq_model_id,
+                    'method_id': applied_method_id,
+                    'method_name': method.name,
+                    'method_type': method.__class__.__name__,
+                    'executed_at': result.executed_at.isoformat(),
+                    'result_type': 'single',
+                    'dq_value': result.dq_value.get('value'),
+                    'dq_value_type': type(result.dq_value.get('value')).__name__,
+                    'execution_details': {
+                        'execution_time': result.details.get('execution_time'),
+                        'rows_affected': result.details.get('rows_affected'),
+                        'total_records': result.details.get('total_records')
+                    },
+                    'assessment_details': {
+                        'thresholds': result.assessment_thresholds,
+                        'score': result.assessment_score,
+                        'is_passing': result.is_passing,
+                        'assessed_at': result.assessed_at.isoformat() if result.assessed_at else None
+                    }
+                }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/applied-dq-methods/(?P<applied_method_id>\d+)/execution-result')
+    def get_specific_method_execution_result_sfad(self, request, dq_model_id=None, applied_method_id=None):
+        """
+        Obtiene resultados de ejecución para un método específico,
+        manejando tanto resultados simples como múltiples con estructura corregida.
+        """
+        try:
+            # 1. Buscar el método aplicado para validar que existe
+            try:
+                method = MeasurementDQMethod.objects.using('default').get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model_id=dq_model_id
+                )
+                content_type = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod)
+            except MeasurementDQMethod.DoesNotExist:
+                try:
+                    method = AggregationDQMethod.objects.using('default').get(
+                        id=applied_method_id,
+                        associatedTo__metric__factor__dq_model_id=dq_model_id
+                    )
+                    content_type = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
+                except AggregationDQMethod.DoesNotExist:
+                    return Response(
+                        {"error": "Método no encontrado en este DQModel"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            # 2. Buscar el resultado más reciente
+            result = DQMethodExecutionResult.objects.using('metadata_db').filter(
+                content_type=content_type,
+                object_id=applied_method_id
+            ).select_related('execution').order_by('-executed_at').first()
+
+            if not result:
+                return Response(
+                    {"error": "No se encontraron resultados de ejecución para este método"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # 3. Construir estructura base de la respuesta
+            response_data = {
+                'result_id': result.id,
+                'dqmodel_execution_id': str(result.execution.execution_id),
+                'dqmodel_execution_status': result.execution.status,
+                'dq_model_id': dq_model_id,
+                'method_id': applied_method_id,
+                'method_name': method.name,
+                'method_type': method.__class__.__name__,
+                'executed_at': result.executed_at.isoformat(),
+                'result_type': result.result_type,
+                'assessment_details': {
+                    'thresholds': result.assessment_thresholds,
+                    'score': result.assessment_score,
+                    'is_passing': result.is_passing,
+                    'assessed_at': result.assessed_at.isoformat() if result.assessed_at else None
+                }
+            }
+
+            # 4. Procesar según el tipo de resultado
+            if result.result_type == 'multiple':
+                # Manejar resultados múltiples con estructura corregida
+                rows = result.dq_value.get('rows', [])
+                
+                response_data.update({
+                    'results': {
+                        'total_rows': len(rows),
+                        'columns': result.dq_value.get('columns', []),
+                        'dq_column': result.dq_value.get('dq_column'),
+                        'sample_data': rows[:5] if isinstance(rows, list) else []
+                    },
+                    'execution_details': {
+                        'execution_time': result.details.get('execution_time'),
+                        'rows_processed': len(rows),
+                        'total_records': result.details.get('total_records')
+                    }
+                })
+            else:
+                # Manejar resultados simples
+                response_data.update({
+                    'dq_value': result.dq_value.get('value'),
+                    'dq_value_type': type(result.dq_value.get('value')).__name__ if 'value' in result.dq_value else 'undefined',
+                    'execution_details': {
+                        'execution_time': result.details.get('execution_time'),
+                        'rows_affected': result.details.get('rows_affected', 1),
+                        'total_records': result.details.get('total_records')
+                    }
+                })
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()  # Para debug en consola
+            return Response(
+                {"error": f"Error al obtener resultados: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/applied-dq-methods/(?P<applied_method_id>\d+)/execution-result')
+    def get_specific_method_execution_result454(self, request, dq_model_id=None, applied_method_id=None):
+        """
+        Obtiene el resultado de ejecución específico para un método aplicado,
+        independientemente del estado de ejecución del modelo completo
+        """
+        # Buscar el método aplicado para validar que existe
+        try:
+            method = MeasurementDQMethod.objects.using('default').get(
+                id=applied_method_id,
+                associatedTo__metric__factor__dq_model_id=dq_model_id
+            )
+            content_type = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod)
+        except MeasurementDQMethod.DoesNotExist:
+            try:
+                method = AggregationDQMethod.objects.using('default').get(
+                    id=applied_method_id,
+                    associatedTo__metric__factor__dq_model_id=dq_model_id
+                )
+                content_type = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
+            except AggregationDQMethod.DoesNotExist:
+                return Response(
+                    {"error": "Método no encontrado en este DQModel"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        # Buscar TODAS las ejecuciones que incluyan este método (no solo las completadas)
+        executions = DQModelExecution.objects.using('metadata_db').filter(
+            dq_model_id=dq_model_id
+        ).order_by('-started_at')
+        
+        result = DQMethodExecutionResult.objects.using('metadata_db').filter(
+            content_type=content_type,
+            object_id=applied_method_id
+        ).select_related('execution').order_by('-executed_at').first()
+
+        if not result:
+            return Response(
+                {"error": "No se encontraron resultados de ejecución para este método"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Formatear respuesta según tipo de resultado
+        if result.result_type == 'multiple':
+            response_data = {
+                'result_id': result.id,
+                'dqmodel_execution_id': str(result.execution.execution_id),
+                'dqmodel_execution_status': result.execution.status,
+                'dq_model_id': dq_model_id,
+                'method_id': applied_method_id,
+                'method_name': method.name,
+                'method_type': method.__class__.__name__,
+                'executed_at': result.executed_at.isoformat(),
+                'result_type': 'multiple',
+                'results': result.dq_value.get('values', []),
+                'columns': result.dq_value.get('columns', []),
+                'execution_details': {
+                    'execution_time': result.details.get('execution_time'),
+                    'rows_affected': result.details.get('rows_affected'),
+                    'total_records': result.details.get('total_records')
+                }
+            }
+        else:
+            response_data = {
+                'result_id': result.id,
+                'dqmodel_execution_id': str(result.execution.execution_id),
+                'dqmodel_execution_status': result.execution.status,
+                'dq_model_id': dq_model_id,
+                'method_id': applied_method_id,
+                'method_name': method.name,
+                'method_type': method.__class__.__name__,
+                'executed_at': result.executed_at.isoformat(),
+                'result_type': 'single',
+                'dq_value': result.dq_value,
+                'dq_value_type': type(result.dq_value).__name__,
+                'execution_details': {
+                    'execution_time': result.details.get('execution_time'),
+                    'rows_affected': result.details.get('rows_affected'),
+                    'total_records': result.details.get('total_records')
+                },
+                'assessment_details': {
+                    'thresholds': result.assessment_thresholds,
+                    'score': result.assessment_score,
+                    'is_passing': result.is_passing,
+                    'assessed_at': result.assessed_at.isoformat() if result.assessed_at else None
+                }
+            }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/applied-dq-methods/(?P<applied_method_id>\d+)/execution-result')
     def get_specific_method_execution_result(self, request, dq_model_id=None, applied_method_id=None):
         """
@@ -895,20 +1923,21 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
         # Estructura base de la respuesta
         response_data = {
             'result_id': result.id,  # ID del resultado de ejecución
-            'execution_id': str(result.execution.execution_id),
-            'execution_status': result.execution.status,
+            'dqmodel_execution_id': str(result.execution.execution_id),
+            'dqmodel_execution_status': result.execution.status,
             'dq_model_id': dq_model_id,
             'method_id': applied_method_id,
             'method_name': method.name,
             'method_type': method.__class__.__name__,
             'executed_at': result.executed_at.isoformat(),
             'dq_value': result.dq_value,
+            'dq_value_type': type(result.dq_value).__name__,
             'execution_details': {
                 'execution_time': result.details.get('execution_time'),
                 'rows_affected': result.details.get('rows_affected'),
                 'columns': result.details.get('columns'),
-                'sample_data': result.details.get('sample_data'),
-                'query': result.details.get('query')
+                #'sample_data': result.details.get('sample_data'),
+                #'query': result.details.get('query')
             },
             'assessment_details': {
                 'thresholds': result.assessment_thresholds if hasattr(result, 'assessment_thresholds') else [],
@@ -964,6 +1993,7 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
             results_map[(content_type_id, object_id)] = {
                 'result_id': result_id,
                 'dq_value': dq_value,
+                'dq_value_type': type(dq_value).__name__,
                 'details': details,
                 'assessment_details': {
                     'thresholds': thresholds,
@@ -991,6 +2021,7 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
                     'method_type': method.__class__.__name__,
                     'status': 'completed',
                     'dq_value': result['dq_value'],
+                    'dq_value_type': result['dq_value_type'],
                     'details': result['details'],
                     'assessment_details': result['assessment_details']  # Se incluyen los detalles de evaluación
                 })
@@ -1095,6 +2126,7 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
                     'method_type': method.__class__.__name__,
                     'status': 'completed',
                     'dq_value': result['dq_value'],
+                    'dq_value_type': result['dq_value_type'],
                     'details': result['details'],
                     'assessment_details': assessment_details
                 })

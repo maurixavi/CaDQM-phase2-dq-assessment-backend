@@ -91,12 +91,22 @@ class MeasurementDQMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeasurementDQMethod
         fields = ['id', 'name', 'appliedTo', 'algorithm', 'associatedTo']
+    
+    
 
 # Serializador para AggregationDQMethod
 class AggregationDQMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = AggregationDQMethod
         fields = ['id', 'name', 'appliedTo', 'algorithm', 'associatedTo']
+        
+    def update(self, instance, validated_data):
+        # Solo actualiza los campos permitidos
+        instance.name = validated_data.get('name', instance.name)
+        instance.appliedTo = validated_data.get('appliedTo', instance.appliedTo)
+        instance.algorithm = validated_data.get('algorithm', instance.algorithm)
+        instance.save()
+        return instance
 
 class DQModelMethodSerializer(serializers.ModelSerializer):
     method_base = serializers.PrimaryKeyRelatedField(
@@ -399,6 +409,7 @@ class DQModelSerializer(serializers.ModelSerializer):
                 MeasurementDQMethod.objects.create(
                     name=measurement.name,
                     appliedTo=measurement.appliedTo,
+                    algorithm=measurement.algorithm,
                     associatedTo=new_method
                 )
             
@@ -407,6 +418,7 @@ class DQModelSerializer(serializers.ModelSerializer):
                 AggregationDQMethod.objects.create(
                     name=aggregation.name,
                     appliedTo=aggregation.appliedTo,
+                    algorithm=aggregation.algorithm,
                     associatedTo=new_method
                 )
         
@@ -446,3 +458,25 @@ class DQModelSerializer(serializers.ModelSerializer):
 
         return instance
 
+
+
+class DQMethodExecutionResultSerializer(serializers.ModelSerializer):
+    results = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DQMethodExecutionResult
+        fields = '__all__'
+
+    def get_results(self, obj):
+        if obj.result_type == 'multiple':
+            return {
+                'type': 'multiple',
+                'total_rows': len(obj.dq_value.get('rows', [])),
+                'columns': obj.dq_value.get('columns', []),
+                'sample_data': obj.dq_value.get('rows', [])[:5]  # Muestra parcial
+            }
+        else:
+            return {
+                'type': 'single',
+                'value': obj.dq_value.get('value')
+            }

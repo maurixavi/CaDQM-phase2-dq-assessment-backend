@@ -325,11 +325,19 @@ class DQMethodExecutionResult(models.Model):
     
     executed_at = models.DateTimeField(auto_now_add=True)
     #duration_seconds = models.FloatField()
-    dq_value = models.FloatField()
+    #dq_value = models.FloatField()
+    dq_value = models.JSONField(default=dict)  # ← Ahora es JSONField
+    #result_type = models.CharField(
+    #    max_length=20, 
+    #    default='single',
+    #    choices=[('single', 'Single'), ('multiple', 'Multiple')]
+    #)
+    
+    result_type = models.CharField(max_length=20, default='single')  # 'single' o 'multiple'
     # status = models.CharField(max_length=20)  # success/failed
     details = models.JSONField(default=dict)
     
-    # Campos para DQ assessment (descomentar y modificar)
+    # Campos para DQ assessment
     assessment_thresholds = models.JSONField(default=list, blank=True)  # Almacena los umbrales definidos
     assessment_score = models.CharField(max_length=100, null=True, blank=True)  # Cambiado de evaluation_score
     assessed_at = models.DateTimeField(null=True, blank=True)  # Cambiado de evaluated_at

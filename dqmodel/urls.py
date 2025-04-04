@@ -110,11 +110,21 @@ urlpatterns = [
     path('dqmodels/<int:dq_model_id>/full/', get_full_dqmodel, name='get_full_dqmodel'),
     
     # Rutas para métodos aplicados (integradas en el ViewSet)
+    #path(
+    #    "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/",
+    #    DQModelViewSet.as_view({'get': 'get_applied_method'}),
+    #    name='dqmodel-applied-method-detail'
+    #),
     path(
-        "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/",
-        DQModelViewSet.as_view({'get': 'get_applied_method'}),
-        name='dqmodel-applied-method-detail'
-    ),
+    "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/",
+    DQModelViewSet.as_view({
+        'get': 'get_applied_method',
+        'patch': 'update_applied_method',
+        'put': 'update_applied_method'
+    }),
+    name='dqmodel-applied-method-detail'
+),
+    
     path(
         "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execute/",
         DQModelViewSet.as_view({'post': 'execute_applied_method'}),
