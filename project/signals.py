@@ -2,10 +2,17 @@
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from dqmodel.models import DQModel
-from .models import PrioritizedDQProblem, Project
+from .models import PrioritizedDQProblem, Project, ProjectStage
 from django.conf import settings
 import requests
 from django.db import transaction
+
+
+@receiver(post_save, sender=Project)
+def initialize_project_stages(sender, instance, created, **kwargs):
+    if created:
+        instance.initialize_stages()
+
 
 # Diccionario para almacenar el estado anterior de dqmodel_version por Project.pk
 _previous_dqmodel_version = {}
@@ -39,15 +46,26 @@ def update_project_on_dqmodel_assignment(sender, instance, created, **kwargs):
                 if current_dqmodel.status == 'draft':
                     new_stage = 'ST4'
                     new_status = 'in_progress'
+                    stage = ProjectStage.Stage.ST4
+                    stage_status = ProjectStage.Status.IN_PROGRESS
                 elif current_dqmodel.status == 'finished':
                     new_stage = 'ST4'
                     new_status = 'done'
+                    stage = ProjectStage.Stage.ST4
+                    stage_status = ProjectStage.Status.DONE
                 else:
                     # Manejar otros estados si existen
                     return
 
                 # Actualizar el Project sin disparar señales nuevamente
                 Project.objects.filter(pk=instance.pk).update(stage=new_stage, status=new_status)
+                
+                # Actualizar ProjectStage correspondiente
+                stage_obj = instance.get_stage(new_stage)
+                if stage_obj:
+                    stage_obj.stage = stage
+                    stage_obj.status = stage_status
+                    stage_obj.save()
 
     # Limpiar el diccionario después de procesar
     if instance.pk in _previous_dqmodel_version:
@@ -68,15 +86,28 @@ def update_project_stage_and_status(sender, instance, created, **kwargs):
     if instance.status == 'draft':
         new_stage = 'ST4'
         new_status = 'in_progress'
+        stage = ProjectStage.Stage.ST4
+        stage_status = ProjectStage.Status.IN_PROGRESS
     elif instance.status == 'finished':
         new_stage = 'ST4'
         new_status = 'done'
+        stage = ProjectStage.Stage.ST4
+        stage_status = ProjectStage.Status.DONE
     else:
         # Manejar otros estados si existen
         return
 
     # Actualizar el Project sin disparar señales nuevamente
     Project.objects.filter(pk=project.pk).update(stage=new_stage, status=new_status)
+    
+    # Actualizar ProjectStage correspondiente
+    stage_obj = project.get_stage(new_stage)
+    if stage_obj:
+        stage_obj.stage = stage
+        stage_obj.status = stage_status
+        stage_obj.save()
+
+
 
 
 @receiver(post_save, sender=Project)

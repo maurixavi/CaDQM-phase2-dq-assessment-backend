@@ -1,11 +1,19 @@
 from rest_framework import serializers
 
 from dqmodel.models import DQMethodExecutionResult
-from .models import DataAtHand, DataSchema, PrioritizedDQProblem, Project
+from .models import DataAtHand, DataSchema, PrioritizedDQProblem, Project, ProjectStage
 from django.core.exceptions import ValidationError
 
 
+class ProjectStageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectStage
+        fields = ['stage', 'status']
+
 class ProjectSerializer(serializers.ModelSerializer):
+    stages = ProjectStageSerializer(many=True, read_only=True)
+    current_stage = serializers.SerializerMethodField()
+
     class Meta:
         model = Project
         fields = [
@@ -15,11 +23,22 @@ class ProjectSerializer(serializers.ModelSerializer):
             'dqmodel_version',
             'context_version',
             'data_at_hand',
-            'stage',
-            'status',
+            'stage',  # Mantener por compatibilidad
+            'status', # Mantener por compatibilidad
             'created_at',
+            'stages', # Nuevo campo
+            'current_stage' # Nuevo campo
         ]
         read_only_fields = ['stage', 'status', 'created_at']
+
+    def get_current_stage(self, obj):
+        current = obj.current_stage
+        if current:
+            return {
+                'stage': current.stage,
+                'status': current.status
+            }
+        return None
 
     #def validate(self, attrs):
      #   if self.instance:

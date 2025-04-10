@@ -127,6 +127,7 @@ class Project(models.Model):
         return self.name
     
     def save(self, *args, **kwargs):
+        # Validación para campos que no deben cambiar una vez asignados
         if self.pk:
             original = Project.objects.get(pk=self.pk)
             # Solo validar si el campo no es null y está intentando cambiar
@@ -135,6 +136,136 @@ class Project(models.Model):
             if original.context_version is not None and self.context_version != original.context_version:
                 raise ValidationError("No se puede cambiar 'context_version' una vez asignado.")
         super().save(*args, **kwargs)
+        
+    #def initialize_stages(self):
+    #    """
+    #    Crea las 6 etapas del proyecto al crearlo
+    #    ST4 se crea como etapa activa (To Do) por defecto
+    #    """
+    #    for stage_value in ProjectStage.Stage.values:
+    #        status = ProjectStage.Status.TO_DO
+    #        ProjectStage.objects.create(
+    #            project=self,
+    #            stage=stage_value,
+    #            status=status #Todas las etapas se crean con status "To Do" por defecto
+    #        )
+    
+    def initialize_stages(self):
+        """
+        Crea las 6 etapas del proyecto al crearlo:
+        - ST1, ST2 y ST3 con status DONE (como si ya estuvieran completados)
+        - ST4, ST5 y ST6 con status TO_DO
+        - ST4 es la etapa activa inicial
+        """
+        for stage_value in ProjectStage.Stage.values:
+            # Definir el status según la etapa
+            if stage_value in ['ST1', 'ST2', 'ST3']:
+                status = ProjectStage.Status.DONE
+            else:
+                status = ProjectStage.Status.TO_DO
+            
+            ProjectStage.objects.create(
+                project=self,
+                stage=stage_value,
+                status=status
+            )
+        
+        # Sincronizar campos legacy para mantener consistencia
+        self.stage = 'ST4'
+        self.status = 'to_do'
+        self.save(update_fields=['stage', 'status'])
+    
+    @property
+    def current_stage(self):
+        """Devuelve el stage activo según esta prioridad:
+        1. ST4 si existe (sin importar su estado)
+        2. Cualquier stage con IN_PROGRESS
+        3. El primer stage con TO_DO (ordenado por ST1, ST2, etc.)
+        4. El último stage con DONE
+        """
+        # 1. ST4 inicialmente
+        st4 = self.stages.filter(stage='ST4', status='TO_DO').first()
+        if st4:
+            return st4
+        
+        # 2. Cualquier stage en progreso
+        in_progress = self.stages.filter(status='IN_PROGRESS').first()
+        if in_progress:
+            return in_progress
+        
+        # 3. Primer stage pendiente
+        to_do = self.stages.filter(status='TO_DO').order_by('stage').first()
+        if to_do:
+            return to_do
+        
+        # 4. Último stage completado
+        return self.stages.filter(status='DONE').order_by('-stage').first()
+
+    #@property
+    #def current_stage(self):
+      #  return self.stages.filter(stage='ST4', status='TO_DO').first()
+        #st4 = self.stages.filter(stage='ST4', status='TO_DO').first()
+        #if st4:
+        #    return st4
+
+        #current = self.stages.filter(status='IN_PROGRESS').first()
+        #if current:
+         #   return current
+
+        #current = self.stages.filter(status='TO_DO').order_by('stage').first()
+        #if current:
+         #   return current
+
+        #return self.stages.filter(status='DONE').order_by('-stage').first()
+    
+    def get_stage(self, stage_code):
+        """Obtiene un stage específico"""
+        return self.stages.filter(stage=stage_code).first()
+
+from django.utils.translation import gettext_lazy as _
+#  _() es una función de internacionalización (i18n) de Django
+
+
+class ProjectStage(models.Model):
+    class Meta:
+        db_table = "project_stage"
+        unique_together = ('project', 'stage')
+        ordering = ['stage']  # Orden natural por stage
+
+    class Stage(models.TextChoices):
+        ST1 = "ST1", _("ST1")
+        ST2 = "ST2", _("ST2")
+        ST3 = "ST3", _("ST3")
+        ST4 = "ST4", _("ST4")  # Stage por defecto
+        ST5 = "ST5", _("ST5")
+        ST6 = "ST6", _("ST6")
+
+    class Status(models.TextChoices):
+        TO_DO = "TO_DO", _("To Do")
+        IN_PROGRESS = "IN_PROGRESS", _("In Progress")
+        DONE = "DONE", _("Done")
+
+    project = models.ForeignKey(
+        Project, 
+        on_delete=models.CASCADE, 
+        related_name="stages"
+    )
+    stage = models.CharField(max_length=100, choices=Stage.choices)
+    status = models.CharField(
+        max_length=50, 
+        choices=Status.choices, 
+        default=Status.TO_DO
+    )
+    
+    class Meta:
+        unique_together = ('project', 'stage')
+        ordering = ['stage']
+
+    def __str__(self):
+        return f"{self.project.name} - {self.get_stage_display()} ({self.get_status_display()})"
+
+
+
 
 
 

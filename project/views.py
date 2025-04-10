@@ -25,6 +25,40 @@ from rest_framework import status
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all().order_by('-id')
     serializer_class = ProjectSerializer
+    
+    @action(detail=True, methods=['patch'], url_path='update-stage')
+    def update_stage_status(self, request, pk=None):
+        project = self.get_object()
+        stage_code = request.data.get('stage')
+        new_status = request.data.get('status')  # 'TO_DO', 'IN_PROGRESS' o 'DONE'
+
+        if not stage_code or not new_status:
+            return Response(
+                {"error": "Se requieren 'stage' y 'status'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        stage = project.get_stage(stage_code)
+        if not stage:
+            return Response(
+                {"error": f"Stage {stage_code} no encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Actualizar ProjectStage
+        stage.status = new_status
+        stage.save()
+
+        # Si es ST4, actualizar también los campos legacy
+        if stage_code == 'ST4':
+            project.stage = 'ST4'
+            project.status = new_status.lower()
+            project.save(update_fields=['stage', 'status'])
+
+        return Response({
+            "message": f"Stage {stage_code} actualizado",
+            "new_status": new_status
+        })
 
 
 # Endpoint genérico para obtener todos los problemas de calidad disponibles en el sistema
