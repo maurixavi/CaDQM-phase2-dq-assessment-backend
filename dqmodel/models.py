@@ -298,7 +298,7 @@ class DQModelExecution(models.Model):
     
     class Meta:
         db_table = 'dq_modelexecution'  # Opcional: personaliza nombre de tabla
-        managed = True  # Asegúrate de que Django maneje las migraciones
+        managed = True 
     
     @property
     def dq_model(self):
@@ -309,32 +309,25 @@ class DQModelExecution(models.Model):
 
 class DQMethodExecutionResult(models.Model):
     execution = models.ForeignKey(DQModelExecution, on_delete=models.CASCADE, related_name='method_results')
-    #applied_method = models.ForeignKey(MeasurementDQMethod, on_delete=models.CASCADE, null=True, blank=True)
-    #applied_aggregation = models.ForeignKey(AggregationDQMethod, on_delete=models.CASCADE, null=True, blank=True)
-    #content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    
-    # Campo requerido para GenericForeignKey (DEBE ser ForeignKey)
+
+    # applied method id 
     content_type = models.ForeignKey(
         'contenttypes.ContentType',
         on_delete=models.CASCADE,
         db_constraint=False  # para evitar problemas entre bases de datos
     )
-      
     object_id = models.PositiveIntegerField()
     applied_method = GenericForeignKey('content_type', 'object_id') 
     
     executed_at = models.DateTimeField(auto_now_add=True)
-    #duration_seconds = models.FloatField()
-    #dq_value = models.FloatField()
-    dq_value = models.JSONField(default=dict)  # ← Ahora es JSONField
+
+    dq_value = models.JSONField(default=dict)
     #result_type = models.CharField(
     #    max_length=20, 
     #    default='single',
     #    choices=[('single', 'Single'), ('multiple', 'Multiple')]
     #)
-    
-    result_type = models.CharField(max_length=20, default='single')  # 'single' o 'multiple'
-    # status = models.CharField(max_length=20)  # success/failed
+    result_type = models.CharField(max_length=20, default='single')  # 'single' (aggregated) o 'multiple'
     details = models.JSONField(default=dict)
     
     # Campos para DQ assessment
@@ -342,11 +335,6 @@ class DQMethodExecutionResult(models.Model):
     assessment_score = models.CharField(max_length=100, null=True, blank=True)  # Cambiado de evaluation_score
     assessed_at = models.DateTimeField(null=True, blank=True)  # Cambiado de evaluated_at
     is_passing = models.BooleanField(null=True, blank=True)
-    
-    # Campos para DQ assessment
-    #assessment_threshold   
-    #evaluation_score = models.CharField(max_length=100, null=True, blank=True)  # 'passed', 'failed', 'good?' 'excelent' ?
-    #evaluated_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         db_table = 'dq_method_execution_result'  # Opcional
@@ -388,3 +376,66 @@ class DQMethodExecutionResult(models.Model):
         return False
 
 
+class ExecutionTableResult(models.Model):
+    """Resultados a nivel de tabla"""
+    #id = models.AutoField(primary_key=True)
+    execution_result = models.ForeignKey(
+        'DQMethodExecutionResult', 
+        on_delete=models.CASCADE,
+        related_name='table_results'
+    )
+    table_id = models.IntegerField()
+    table_name = models.CharField(max_length=255)
+    dq_value = models.JSONField()  # {value: x, metadata: {}}
+    executed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['table_id']),
+            models.Index(fields=['execution_result']),
+        ]
+
+class ExecutionColumnResult(models.Model):
+    """Resultados a nivel de columna"""
+    #id = models.AutoField(primary_key=True)
+    execution_result = models.ForeignKey(
+        'DQMethodExecutionResult',
+        on_delete=models.CASCADE,
+        related_name='column_results'
+    )
+    table_id = models.IntegerField()
+    table_name = models.CharField(max_length=255)
+    column_id = models.IntegerField()
+    column_name = models.CharField(max_length=255)
+    dq_value = models.JSONField()  # {value: x, metadata: {}}
+    executed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['column_id']),
+            models.Index(fields=['table_id', 'column_id']),
+        ]
+
+class ExecutionRowResult(models.Model):
+    """Resultados a nivel de fila"""
+    #id = models.AutoField(primary_key=True)
+    execution_result = models.ForeignKey(
+        'DQMethodExecutionResult',
+        on_delete=models.CASCADE,
+        related_name='row_results'
+    )
+    applied_method_id = models.IntegerField()  # ID del método aplicado
+    table_id = models.IntegerField()
+    table_name = models.CharField(max_length=255)
+    column_id = models.IntegerField(null=True, blank=True)
+    column_name = models.CharField(max_length=255, blank=True)
+    row_id = models.CharField(max_length=255)  # ID original de la fila
+    dq_value = models.JSONField()  # {value: x, row_data: {}}
+    executed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['row_id']),
+            models.Index(fields=['table_id', 'row_id']),
+            models.Index(fields=['applied_method_id']),
+        ]

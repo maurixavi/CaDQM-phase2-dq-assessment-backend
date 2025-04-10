@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework import routers
 from . import views 
 from .views import (
+    ColumnResultsViewSet,
     DQExecutionResultViewSet,
     DQModelViewSet,
     DQDimensionBaseViewSet,
@@ -14,6 +15,8 @@ from .views import (
     DQModelFactorViewSet,
     DQModelMetricViewSet,
     DQModelMethodViewSet,
+    RowResultsViewSet,
+    TableResultsViewSet,
     generate_dqmethod_suggestion,
     create_initial_prioritized_dq_problems,
     get_full_dqmodel,
@@ -44,6 +47,21 @@ router.register(
 
 router.register(r'execution-results', DQExecutionResultViewSet, basename='execution-results')
 
+router.register(
+    r'dqmodels/(?P<dq_model_id>\d+)/table-results',
+    TableResultsViewSet,
+    basename='table-results'
+)
+router.register(
+    r'dqmodels/(?P<dq_model_id>\d+)/column-results',
+    ColumnResultsViewSet,
+    basename='column-results'
+)
+router.register(
+    r'dqmodels/(?P<dq_model_id>\d+)/row-results',
+    RowResultsViewSet,
+    basename='row-results'
+)
 
 urlpatterns = [
     path("", include(router.urls)),

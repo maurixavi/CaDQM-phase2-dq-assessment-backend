@@ -1,6 +1,62 @@
 from rest_framework import serializers
 from .models import DQMethodExecutionResult, DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod, PrioritizedDqProblem
 
+from rest_framework import serializers
+from .models import ExecutionTableResult, ExecutionColumnResult, ExecutionRowResult
+
+class TableResultSerializer(serializers.ModelSerializer):
+    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
+    applied_method_id = serializers.IntegerField(source='execution_result.object_id')
+    
+    class Meta:
+        model = ExecutionTableResult
+        fields = [
+            'id',
+            'table_id',
+            'table_name',
+            'dq_value',
+            'executed_at',
+            'execution_id',
+            'applied_method_id'
+        ]
+
+class ColumnResultSerializer(serializers.ModelSerializer):
+    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
+    applied_method_id = serializers.IntegerField(source='execution_result.object_id')
+    
+    class Meta:
+        model = ExecutionColumnResult
+        fields = [
+            'id',
+            'table_id',
+            'table_name',
+            'column_id',
+            'column_name',
+            'dq_value',
+            'executed_at',
+            'execution_id',
+            'applied_method_id'
+        ]
+
+class RowResultSerializer(serializers.ModelSerializer):
+    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
+    applied_method_id = serializers.IntegerField(source='applied_method_id', read_only=True)
+    
+    class Meta:
+        model = ExecutionRowResult
+        fields = [
+            'id',
+            'table_id',
+            'table_name',
+            'column_id',
+            'column_name',
+            'row_id',
+            'dq_value',
+            'executed_at',
+            'execution_id',
+            'applied_method_id'
+        ]
+        
 
 class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
     class Meta:

@@ -24,12 +24,16 @@ from .models import (
     DQModelFactor,
     DQModelMetric,
     DQModelMethod,
+    ExecutionColumnResult,
+    ExecutionRowResult,
+    ExecutionTableResult,
     MeasurementDQMethod,
     AggregationDQMethod,
     PrioritizedDqProblem,
     PrioritizedDqProblem
 )
 from .serializer import (
+    ColumnResultSerializer,
     DQModelSerializer,
     DQDimensionBaseSerializer,
     DQFactorBaseSerializer,
@@ -41,7 +45,9 @@ from .serializer import (
     DQModelFactorSerializer,
     DQModelMetricSerializer,
     DQModelMethodSerializer,
-    PrioritizedDqProblemSerializer
+    PrioritizedDqProblemSerializer,
+    RowResultSerializer,
+    TableResultSerializer
 )
 from .ai_utils import generate_ai_suggestion
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -1066,309 +1072,7 @@ class DQModelViewSet(viewsets.ModelViewSet):
         return total_records if total_records is not None else 0
 
     # Función para analizar la salida de EXPLAIN ANALYZE y obtener el número total de registros procesados
-    def parse_explain_analyzemal(self, explain_output):
-        total_records = None
-        for line in explain_output:
-            if 'Total runtime' in line[0]:  # Verifica la línea con el tiempo de ejecución
-                continue
-            if 'rows' in line[0]:
-                total_records = int(line[0].split('=')[1].strip())
-                break
-        return total_records if total_records is not None else 0
-
-
-    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
-    def execute_applied_method_ULTIMO_BACKUP(self, request, pk=None, applied_method_id=None):
-        """
-        Ejecuta un método aplicado con manejo explícito de tipos Decimal
-        """
-        debug_info = []
-        response_data = {
-            'status': 'started',
-            'dq_model_id': pk,
-            'method_id': applied_method_id,
-            'debug_info': debug_info
-        }
-
-        try:
-            start_time = timezone.now()
-            debug_info.append(f"Inicio ejecución: {start_time}")
-            
-            # 1. Obtener el modelo y método
-            dq_model = get_object_or_404(DQModel, pk=pk)
-            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version}")
-
-            # Buscar el método aplicado
-            try:
-                applied_method = MeasurementDQMethod.objects.get(
-                    id=applied_method_id,
-                    associatedTo__metric__factor__dq_model=dq_model
-                )
-                method_type = 'measurement'
-            except MeasurementDQMethod.DoesNotExist:
-                try:
-                    applied_method = AggregationDQMethod.objects.get(
-                        id=applied_method_id,
-                        associatedTo__metric__factor__dq_model=dq_model
-                    )
-                    method_type = 'aggregation'
-                except AggregationDQMethod.DoesNotExist:
-                    debug_info.append("Método no encontrado")
-                    return Response(
-                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-
-            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
-            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
-
-            # 2. Conectar a la base de datos y ejecutar
-            try:
-                conn = psycopg2.connect(
-                    dbname='data_at_hand_v01',
-                    user='postgres',
-                    password='password',
-                    host='localhost',
-                    port=5432
-                )
-                debug_info.append("Conexión a PostgreSQL establecida")
-
-                # Medición de tiempo de ejecución
-                query_start_time = time.time()
-                
-                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-                    cursor.execute(applied_method.algorithm)
-                    columns = [desc[0] for desc in cursor.description]
-                    
-                    # Función para convertir Decimal a float
-                    def convert_decimals(obj):
-                        if isinstance(obj, Decimal):
-                            return float(obj)
-                        elif isinstance(obj, dict):
-                            return {k: convert_decimals(v) for k, v in obj.items()}
-                        elif isinstance(obj, (list, tuple)):
-                            return [convert_decimals(item) for item in obj]
-                        return obj
-                    
-                    # Obtener y convertir los resultados
-                    rows = [convert_decimals(dict(row)) for row in cursor.fetchall()]
-                    
-                    query_time = time.time() - query_start_time
-                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
-                    
-                    # 2. Obtener total_records EXACTO (filas procesadas)
-                    #cursor.execute(f"EXPLAIN ANALYZE {applied_method.algorithm}")
-                    #explain_output = cursor.fetchall()
-                    #total_records = self.parse_explain_analyze(explain_output)  # Función custom
-                    
-                    # Guardar resultados en metadata_db
-                    try:
-                        DQExecutionResultService.save_execution_result(
-                            dq_model_id=pk,
-                            applied_method=applied_method,
-                            result_value=rows[0].get(columns[0]),
-                            execution_details={
-                                'query_time_seconds': query_time,
-                                'rows_affected': cursor.rowcount,
-                                #columns: columns devuelve columna del resultado
-                                'applied_to': applied_method.appliedTo,
-                                'query': applied_method.algorithm
-                            }
-                        )
-                    except Exception as e:
-                        debug_info.append(f"Advertencia al guardar resultados: {str(e)}")
-
-                    # Procesar resultados para la respuesta
-                    processed_results = []
-                    for row in rows:
-                        processed_row = {
-                            'dq_metric_name': applied_method.name,
-                            'dq_metric_id': applied_method.id,
-                            'applied_to': applied_method.appliedTo,
-                            'execution_time_seconds': round(query_time, 4),
-                            'dq_value': row.get(columns[0])
-                        }
-                        processed_results.append(processed_row)
-
-                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
-                    
-                    response_data.update({
-                        'status': 'success',
-                        'dq_results': processed_results,
-                        'execution_details': {
-                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
-                            'query_time_seconds': round(query_time, 4),
-                            'rows_affected': cursor.rowcount
-                        },
-                        'debug_info': debug_info
-                    })
-                    
-                    return Response(response_data)
-
-            except Exception as e:
-                debug_info.append(f"Error ejecutando consulta: {str(e)}")
-                return Response(
-                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        except Exception as e:
-            debug_info.append(f"Error inesperado: {str(e)}")
-            return Response(
-                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        finally:
-            if 'conn' in locals():
-                conn.close()
-                debug_info.append("Conexión cerrada")
     
-    
-    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
-    def execute_applied_method_RESPLADOOO(self, request, pk=None, applied_method_id=None):
-        """
-        Ejecuta un método aplicado con manejo explícito de tipos Decimal
-        """
-        debug_info = []
-        response_data = {
-            'status': 'started',
-            'dq_model_id': pk,
-            'method_id': applied_method_id,
-            'debug_info': debug_info
-        }
-
-        try:
-            start_time = timezone.now()
-            debug_info.append(f"Inicio ejecución: {start_time}")
-            
-            # 1. Obtener el modelo y método
-            dq_model = get_object_or_404(DQModel, pk=pk)
-            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version}")
-
-            # Buscar el método aplicado
-            try:
-                applied_method = MeasurementDQMethod.objects.get(
-                    id=applied_method_id,
-                    associatedTo__metric__factor__dq_model=dq_model
-                )
-                method_type = 'measurement'
-            except MeasurementDQMethod.DoesNotExist:
-                try:
-                    applied_method = AggregationDQMethod.objects.get(
-                        id=applied_method_id,
-                        associatedTo__metric__factor__dq_model=dq_model
-                    )
-                    method_type = 'aggregation'
-                except AggregationDQMethod.DoesNotExist:
-                    debug_info.append("Método no encontrado")
-                    return Response(
-                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-
-            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
-            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
-
-            # 2. Conectar a la base de datos y ejecutar
-            try:
-                conn = psycopg2.connect(
-                    dbname='data_at_hand_v01',
-                    user='postgres',
-                    password='password',
-                    host='localhost',
-                    port=5432
-                )
-                debug_info.append("Conexión a PostgreSQL establecida")
-
-                # Medición de tiempo de ejecución
-                query_start_time = time.time()
-                
-                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-                    cursor.execute(applied_method.algorithm)
-                    columns = [desc[0] for desc in cursor.description]
-                    
-                    # Función para convertir Decimal a float
-                    def convert_decimals(obj):
-                        if isinstance(obj, Decimal):
-                            return float(obj)
-                        elif isinstance(obj, dict):
-                            return {k: convert_decimals(v) for k, v in obj.items()}
-                        elif isinstance(obj, (list, tuple)):
-                            return [convert_decimals(item) for item in obj]
-                        return obj
-                    
-                    # Obtener y convertir los resultados
-                    rows = [convert_decimals(dict(row)) for row in cursor.fetchall()]
-                    
-                    query_time = time.time() - query_start_time
-                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
-                    
-                    # 2. Obtener total_records EXACTO (filas procesadas)
-                    #cursor.execute(f"EXPLAIN ANALYZE {applied_method.algorithm}")
-                    #explain_output = cursor.fetchall()
-                    #total_records = self.parse_explain_analyze(explain_output)  # Función custom
-                    
-                    # Guardar resultados en metadata_db
-                    try:
-                        DQExecutionResultService.save_execution_result(
-                            dq_model_id=pk,
-                            applied_method=applied_method,
-                            result_value=rows[0].get(columns[0]),
-                            execution_details={
-                                'query_time_seconds': query_time,
-                                'rows_affected': cursor.rowcount,
-                                'columns': columns,
-                                'sample_data': rows[:5],
-                                'query': applied_method.algorithm
-                            }
-                        )
-                    except Exception as e:
-                        debug_info.append(f"Advertencia al guardar resultados: {str(e)}")
-
-                    # Procesar resultados para la respuesta
-                    processed_results = []
-                    for row in rows:
-                        processed_row = {
-                            'dq_metric_name': applied_method.name,
-                            'dq_metric_id': applied_method.id,
-                            'applied_to': applied_method.appliedTo,
-                            'execution_time_seconds': round(query_time, 4),
-                            'dq_value': row.get(columns[0])
-                        }
-                        processed_results.append(processed_row)
-
-                    debug_info.append(f"Consulta ejecutada con éxito. Filas devueltas: {len(rows)}")
-                    
-                    response_data.update({
-                        'status': 'success',
-                        'dq_results': processed_results,
-                        'execution_details': {
-                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
-                            'query_time_seconds': round(query_time, 4),
-                            'rows_affected': cursor.rowcount
-                        },
-                        'debug_info': debug_info
-                    })
-                    
-                    return Response(response_data)
-
-            except Exception as e:
-                debug_info.append(f"Error ejecutando consulta: {str(e)}")
-                return Response(
-                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        except Exception as e:
-            debug_info.append(f"Error inesperado: {str(e)}")
-            return Response(
-                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        finally:
-            if 'conn' in locals():
-                conn.close()
-                debug_info.append("Conexión cerrada")
     
 
     def extract_table_names(self, sql_query):
@@ -2083,11 +1787,11 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
                     )
 
                 # Validar que min sea menor que max
-                if threshold['min'] >= threshold['max']:
-                    return Response(
-                        {"error": f"Threshold '{threshold['name']}' has invalid range: min cannot be greater than or equal to max"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                #if threshold['min'] >= threshold['max']:
+                #    return Response(
+                #        {"error": f"Threshold '{threshold['name']}' has invalid range: min cannot be greater than or equal to max"},
+                #        status=status.HTTP_400_BAD_REQUEST
+                #    )
             
             # Actualizar los umbrales en el campo assessment_thresholds
             result.assessment_thresholds = thresholds
@@ -2761,3 +2465,52 @@ def execute_assessment(request, result_id):
         'is_passing': result.is_passing,
         'assessed_at': result.assessed_at
     })
+    
+    
+from rest_framework import viewsets
+from django.db.models import Prefetch
+
+class TableResultsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Endpoint para resultados a nivel de tabla"""
+    queryset = ExecutionTableResult.objects.using('metadata_db').all()
+    serializer_class = TableResultSerializer  # Debes crear este serializer
+    
+    def get_queryset(self):
+        dq_model_id = self.kwargs['dq_model_id']
+        return self.queryset.filter(
+            execution_result__execution__dq_model_id=dq_model_id
+        ).select_related('execution_result')
+
+class ColumnResultsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Endpoint para resultados a nivel de columna"""
+    queryset = ExecutionColumnResult.objects.using('metadata_db').all()
+    serializer_class = ColumnResultSerializer
+    
+    def get_queryset(self):
+        dq_model_id = self.kwargs['dq_model_id']
+        return self.queryset.filter(
+            execution_result__execution__dq_model_id=dq_model_id
+        ).select_related('execution_result')
+
+class RowResultsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Endpoint para resultados a nivel de fila"""
+    queryset = ExecutionRowResult.objects.using('metadata_db').all()
+    serializer_class = RowResultSerializer
+    #pagination_class = LargeResultsSetPagination  # Para manejar muchos registros
+    
+    def get_queryset(self):
+        dq_model_id = self.kwargs['dq_model_id']
+        queryset = self.queryset.filter(
+            execution_result__execution__dq_model_id=dq_model_id
+        )
+        
+        # Filtros opcionales
+        table_id = self.request.query_params.get('table_id')
+        if table_id:
+            queryset = queryset.filter(table_id=table_id)
+            
+        column_id = self.request.query_params.get('column_id')
+        if column_id:
+            queryset = queryset.filter(column_id=column_id)
+            
+        return queryset.select_related('execution_result')
