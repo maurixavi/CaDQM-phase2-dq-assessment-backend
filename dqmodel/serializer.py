@@ -2,7 +2,14 @@ from rest_framework import serializers
 from .models import DQMethodExecutionResult, DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod, PrioritizedDqProblem
 
 from rest_framework import serializers
-from .models import ExecutionTableResult, ExecutionColumnResult, ExecutionRowResult
+from .models import ExecutionTableResult, ExecutionColumnResult, ExecutionRowResult, DQModelExecution
+
+
+class DQModelExecutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DQModelExecution
+        fields = '__all__'  
+
 
 class TableResultSerializer(serializers.ModelSerializer):
     execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')

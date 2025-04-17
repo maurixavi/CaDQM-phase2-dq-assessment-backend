@@ -142,6 +142,12 @@ urlpatterns = [
     }),
     name='dqmodel-applied-method-detail'
 ),
+
+    path(
+        "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/assess/",
+        DQModelViewSet.as_view({'post': 'assess_applied_method'}),
+        name='dqmodel-applied-method-assess'
+    ),
     
     path(
         "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execute/",
@@ -195,6 +201,63 @@ urlpatterns = [
         DQExecutionResultViewSet.as_view({'get': 'get_specific_method_execution_result'}),
         name='specific-method-execution-result'
     ),
+    
+    # RESULTADOS POR METODO y GRANULARIDAD
+    path(
+        'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-column-results/',
+        DQExecutionResultViewSet.as_view({'get': 'get_method_column_results'}),
+        name='execution-column-results'
+    ),
+    path(
+        'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-row-results/',
+        DQExecutionResultViewSet.as_view({'get': 'get_method_row_results'}),
+        name='execution-row-results'
+    ),
+    path(
+        'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-method-results/',
+        DQExecutionResultViewSet.as_view({'get': 'get_applied_method_results'}),
+        name='execution-method-results'
+    ),path(
+        'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-method-results/<int:result_id>',
+        DQExecutionResultViewSet.as_view({'get': 'get_specific_applied_method_results'}),
+        name='execution-method-results-detail'
+    ),
+    
+    # update assessment thresholds
+    path(
+        'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-method-results/<int:result_id>/thresholds/',
+        DQExecutionResultViewSet.as_view({'patch': 'update_execution_result_thresholds'}),
+        name='update-method-execution-assessment'
+    ),
+    #path(
+     #   'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-method-results/<int:result_id>',
+     #   DQExecutionResultViewSet.as_view({'patch': 'update_execution_result_thresholds'}),
+     #   name='update-execution-result-thresholds'
+    #),
+        
+    
+    # EJECUCIONES POR DQMODEL
+    path(
+        'dqmodels/<int:dq_model_id>/measurement-executions/',
+        DQExecutionResultViewSet.as_view({'get': 'get_dqmodel_executions'}),
+        name='dqmodel-measurement-executions'
+    ),
+    path(
+        'dqmodels/<int:dq_model_id>/measurement-executions/<uuid:execution_id>/',
+        DQExecutionResultViewSet.as_view({'get': 'get_specific_model_execution'}),
+        name='dqmodel-measurement-execution-detail'
+    ),
+    
+        
+    # RESULTADOS POR DATOS 
+    path("dq-measurement/column-results/", views.DQExecutionResultViewSet.as_view({'get': 'get_measurement_results_column_granularity'}), name="get-column-results"),
+    
+    path("dq-measurement/column-results/dqmodel/<int:dq_model_id>/", views.DQExecutionResultViewSet.as_view({'get': 'get_measurement_results_column_granularity_dq_model'}), name="get-column-results-by-dqmodel"),
+    
+    path("dq-measurement/column-results/column/<int:column_id>/", views.DQExecutionResultViewSet.as_view({'get': 'get_measurement_results_column_granularity_by_column'}), name="get-column-results-by-column"),
+    
+    path("dq-measurement/column-results/table/<int:table_id>/", views.DQExecutionResultViewSet.as_view({'get': 'get_measurement_results_column_granularity_by_table'}), name="get-column-results-by-table"),
+    
     
     path(
         'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-result/<int:result_id>/thresholds/',

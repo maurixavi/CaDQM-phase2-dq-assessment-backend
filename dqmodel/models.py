@@ -290,7 +290,7 @@ class PrioritizedDqProblem(models.Model):
 
 class DQModelExecution(models.Model):
     execution_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='executions')
+    #dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='executions')
     dq_model_id = models.IntegerField()  # Cambiado de ForeignKey a IntegerField
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -332,9 +332,9 @@ class DQMethodExecutionResult(models.Model):
     
     # Campos para DQ assessment
     assessment_thresholds = models.JSONField(default=list, blank=True)  # Almacena los umbrales definidos
-    assessment_score = models.CharField(max_length=100, null=True, blank=True)  # Cambiado de evaluation_score
+    #assessment_score = models.CharField(max_length=100, null=True, blank=True)  # Cambiado de evaluation_score
     assessed_at = models.DateTimeField(null=True, blank=True)  # Cambiado de evaluated_at
-    is_passing = models.BooleanField(null=True, blank=True)
+    #is_passing = models.BooleanField(null=True, blank=True)
     
     class Meta:
         db_table = 'dq_method_execution_result'  # Opcional
@@ -366,12 +366,12 @@ class DQMethodExecutionResult(models.Model):
         for threshold in self.assessment_thresholds:
             if threshold['min'] <= value <= threshold['max']:
                 self.assessment_score = threshold['name']
-                self.is_passing = threshold.get('is_passing', True)
+                #self.is_passing = threshold.get('is_passing', True)
                 self.save()
                 return True
         
         self.assessment_score = 'Not Assessed'
-        self.is_passing = False
+        #self.is_passing = False
         self.save()
         return False
 
@@ -386,14 +386,38 @@ class ExecutionTableResult(models.Model):
     )
     table_id = models.IntegerField()
     table_name = models.CharField(max_length=255)
-    dq_value = models.JSONField()  # {value: x, metadata: {}}
+    
+    #dq_value = models.JSONField()  
+    dq_value = models.FloatField(null=True, blank=True)
+    
     executed_at = models.DateTimeField(auto_now_add=True)
+    
+    assessment_score = models.CharField(max_length=100, null=True, blank=True)
     
     class Meta:
         indexes = [
             models.Index(fields=['table_id']),
             models.Index(fields=['execution_result']),
         ]
+        
+    # Función para evaluar el resultado contra los thresholds
+    def assess_result(self):
+        thresholds = self.execution_result.assessment_thresholds
+        value = self.dq_value
+
+        if thresholds is None or value is None:
+            self.assessment_score = None
+            return
+
+        for threshold in thresholds:
+            if threshold['min'] <= value <= threshold['max']:
+                self.assessment_score = threshold['name']
+                break
+        else:
+            self.assessment_score = 'Not Assessed'
+
+        self.save()
+
 
 class ExecutionColumnResult(models.Model):
     """Resultados a nivel de columna"""
@@ -407,9 +431,34 @@ class ExecutionColumnResult(models.Model):
     table_name = models.CharField(max_length=255)
     column_id = models.IntegerField()
     column_name = models.CharField(max_length=255)
-    dq_value = models.JSONField()  # {value: x, metadata: {}}
+    
+    #dq_value = models.JSONField()  
+    dq_value = models.FloatField(null=True, blank=True)
+    
     executed_at = models.DateTimeField(auto_now_add=True)
     
+    
+    assessment_score = models.CharField(max_length=100, null=True, blank=True)
+
+    # Función para evaluar el resultado contra los thresholds
+    def assess_result(self):
+        thresholds = self.execution_result.assessment_thresholds
+        value = self.dq_value
+
+        if thresholds is None or value is None:
+            self.assessment_score = None
+            return
+
+        for threshold in thresholds:
+            if threshold['min'] <= value <= threshold['max']:
+                self.assessment_score = threshold['name']
+                break
+        else:
+            self.assessment_score = 'Not Assessed'
+
+        self.save()
+
+
     class Meta:
         indexes = [
             models.Index(fields=['column_id']),
@@ -430,8 +479,13 @@ class ExecutionRowResult(models.Model):
     column_id = models.IntegerField(null=True, blank=True)
     column_name = models.CharField(max_length=255, blank=True)
     row_id = models.CharField(max_length=255)  # ID original de la fila
-    dq_value = models.JSONField()  # {value: x, row_data: {}}
+    
+    #dq_value = models.JSONField()
+    dq_value = models.FloatField(null=True, blank=True)
+    
     executed_at = models.DateTimeField(auto_now_add=True)
+    
+    assessment_score = models.CharField(max_length=100, null=True, blank=True)
     
     class Meta:
         indexes = [
@@ -439,3 +493,21 @@ class ExecutionRowResult(models.Model):
             models.Index(fields=['table_id', 'row_id']),
             models.Index(fields=['applied_method_id']),
         ]
+        
+    # Función para evaluar el resultado contra los thresholds
+    def assess_result(self):
+        thresholds = self.execution_result.assessment_thresholds
+        value = self.dq_value
+
+        if thresholds is None or value is None:
+            self.assessment_score = None
+            return
+
+        for threshold in thresholds:
+            if threshold['min'] <= value <= threshold['max']:
+                self.assessment_score = threshold['name']
+                break
+        else:
+            self.assessment_score = 'Not Assessed'
+
+        self.save()
