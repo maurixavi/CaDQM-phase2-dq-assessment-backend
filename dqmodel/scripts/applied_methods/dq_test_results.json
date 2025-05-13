@@ -1,0 +1,144 @@
+[
+  {
+    "status": "success",
+    "method": "Descripciones no nulas",
+    "dimension": "Completeness",
+    "factor": "Density",
+    "metric": "Null Value Percentage",
+    "result_type": "percentage",
+    "results": 1.0,
+    "query": "\n            SELECT 1 - (COUNT(*) FILTER (WHERE description IS NULL) * 1.0 / COUNT(*)) \n            FROM books_data\n        "
+  },
+  {
+    "status": "success",
+    "method": "Precios positivos",
+    "dimension": "Accuracy",
+    "factor": "Domain Integrity",
+    "metric": "Value Validation",
+    "result_type": "boolean",
+    "results": [
+      {
+        "row_id": 1,
+        "value": true
+      },
+      {
+        "row_id": 2,
+        "value": true
+      },
+      {
+        "row_id": 3,
+        "value": true
+      },
+      {
+        "row_id": 4,
+        "value": true
+      },
+      {
+        "row_id": 5,
+        "value": true
+      },
+      {
+        "row_id": 6,
+        "value": true
+      },
+      {
+        "row_id": 7,
+        "value": true
+      },
+      {
+        "row_id": 8,
+        "value": true
+      },
+      {
+        "row_id": 9,
+        "value": true
+      },
+      {
+        "row_id": 10,
+        "value": true
+      }
+    ],
+    "query": "SELECT price >= 0 FROM books_rating LIMIT 10"
+  },
+  {
+    "status": "success",
+    "method": "Ratings v\u00e1lidos",
+    "dimension": "Accuracy",
+    "factor": "Domain Integrity",
+    "metric": "Range Compliance",
+    "result_type": "percentage",
+    "results": 1.0,
+    "query": "\n            SELECT COUNT(*) FILTER (WHERE review_score BETWEEN 1 AND 5) * 1.0 / COUNT(*)\n            FROM books_rating\n        "
+  },
+  {
+    "status": "success",
+    "method": "Autores completos",
+    "dimension": "Completeness",
+    "factor": "Density",
+    "metric": "Null Value Check",
+    "result_type": "boolean",
+    "results": [
+      {
+        "row_id": 1,
+        "value": true
+      },
+      {
+        "row_id": 2,
+        "value": true
+      },
+      {
+        "row_id": 3,
+        "value": true
+      },
+      {
+        "row_id": 4,
+        "value": true
+      },
+      {
+        "row_id": 5,
+        "value": true
+      },
+      {
+        "row_id": 6,
+        "value": true
+      },
+      {
+        "row_id": 7,
+        "value": true
+      },
+      {
+        "row_id": 8,
+        "value": true
+      },
+      {
+        "row_id": 9,
+        "value": true
+      },
+      {
+        "row_id": 10,
+        "value": true
+      }
+    ],
+    "query": "SELECT authors IS NOT NULL FROM books_data LIMIT 10"
+  },
+  {
+    "status": "success",
+    "method": "Reviews \u00faltimos 3 meses",
+    "dimension": "Freshness",
+    "factor": "Currency",
+    "metric": "Recent Items Count",
+    "result_type": "count",
+    "results": 0,
+    "query": "\n            SELECT COUNT(*) FROM books_rating \n            WHERE to_timestamp(review_time) > CURRENT_DATE - INTERVAL '3 months'\n        "
+  },
+  {
+    "status": "success",
+    "method": "Libros con reviews",
+    "dimension": "Consistency",
+    "factor": "Inter-relationship Integrity",
+    "metric": "Cross-table Validation",
+    "result_type": "count",
+    "results": 212404,
+    "query": "\n            SELECT COUNT(DISTINCT b.title)\n            FROM books_data b\n            JOIN books_rating r ON b.title = r.title\n        "
+  }
+]

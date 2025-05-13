@@ -1,0 +1,125 @@
+[
+  {
+    "status": "success",
+    "method": "Validaci\u00f3n Precios Positivos",
+    "dimension": "Consistency",
+    "factor": "Domain Integrity",
+    "metric": "Value Validation",
+    "result_type": "boolean",
+    "results": [
+      {
+        "row_id": 1,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 2,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 3,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 4,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 5,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 6,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 7,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 8,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 9,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 10,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 11,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 12,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 13,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 14,
+        "value": true,
+        "condition_met": true
+      },
+      {
+        "row_id": 15,
+        "value": true,
+        "condition_met": true
+      }
+    ],
+    "query_used": "SELECT price >= 0 FROM books_rating LIMIT 15",
+    "summary": {
+      "total_rows": 15,
+      "passed": 15,
+      "failed": 0,
+      "compliance_rate": 1.0
+    }
+  },
+  {
+    "status": "success",
+    "method": "Completitud de T\u00edtulos",
+    "dimension": "Completeness",
+    "factor": "Density",
+    "metric": "Null Value Percentage",
+    "result_type": "percentage",
+    "results": 1.0,
+    "query_used": "SELECT 1 - (COUNT(*) FILTER (WHERE title IS NULL) * 1.0 / COUNT(*)) FROM books_data",
+    "interpretation": "100.00% de cumplimiento"
+  },
+  {
+    "status": "success",
+    "method": "Conteo de Reviews Recientes",
+    "dimension": "Freshness",
+    "factor": "Currency",
+    "metric": "Recent Items Count",
+    "result_type": "count",
+    "results": 0,
+    "query_used": "\n            SELECT COUNT(*) FROM books_rating \n            WHERE to_timestamp(review_time) > CURRENT_DATE - INTERVAL '1 month'\n        "
+  },
+  {
+    "status": "success",
+    "method": "Promedio de Ratings",
+    "dimension": "Accuracy",
+    "factor": "Semantic Accuracy",
+    "metric": "Average Value",
+    "result_type": "range",
+    "results": 4.215289333333334,
+    "query_used": "SELECT AVG(review_score) FROM books_rating"
+  }
+]
