@@ -50,6 +50,8 @@ from .serializer import (
     TableResultSerializer
 )
 from .ai_utils import generate_ai_suggestion
+from .dq_dimension_factor_recommender import get_dq_recommendation
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
@@ -93,6 +95,52 @@ from .models import (
     MeasurementDQMethod,
     AggregationDQMethod
 )
+
+
+
+
+@api_view(['POST'])
+def generate_dq_dim_factor_suggestion(request):
+    try:
+        print("[generate_dq_dim_factor_suggestion] Recibiendo datos...")
+
+        data = request.data
+        dimensions = data.get('dimensions_and_factors')
+        problems = data.get('dq_problems')
+        context = data.get('context_components')
+
+        # Validación básica
+        if not dimensions or not problems or not context:
+            return Response({
+                "status": "failed",
+                "error": "Se requieren los campos 'dimensions_and_factors', 'dq_problems' y 'context_components' en el cuerpo del request."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generar sugerencia con la función principal
+        result = get_dq_recommendation(
+            dimensions=dimensions,
+            problems=problems,
+            context=context
+        )
+
+        if "error" in result:
+            return Response({
+                "status": "failed",
+                "error": result["error"]
+            }, status=status.HTTP_200_OK)   
+
+        return Response({
+            "status": "success",
+            **result
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(f"[ERROR] {str(e)}")
+        return Response({
+            "status": "failed",
+            "error": str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 # AI SUGGESTIONS GENERATION
@@ -233,27 +281,41 @@ class DQFactorBaseViewSet(viewsets.ModelViewSet):
     def get_factors_by_dimension(self, request, pk=None):
         # Filtrar factores basados en el dimension_id
         factors = self.queryset.filter(facetOf_id=pk)
-        if factors.exists():
-            serializer = self.get_serializer(factors, many=True)
-            return Response(serializer.data)
-        return Response({"detail": "No factors found for this dimension"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.get_serializer(factors, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    #@action(detail=True, methods=['get'], url_path='factors-base')
+    #def get_factors_by_dimension(self, request, pk=None):
+   #     factors = self.queryset.filter(facetOf_id=pk)
+    #    if factors.exists():
+     #       serializer = self.get_serializer(factors, many=True)
+      #      return Response(serializer.data)
+      #  return Response({"detail": "No factors found for this dimension"}, status=status.#HTTP_404_NOT_FOUND)
     
 
 # ViewSet para DQMetricBase
 class DQMetricBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMetricBase.objects.all()
     serializer_class = DQMetricBaseSerializer
-
+    
     @action(detail=True, methods=['get'], url_path='metrics-base')
     def get_metrics_by_factor(self, request, pk=None, dim_id=None):
-        # Filtrar factores basados en el dimension_id
+        # Filtrar factores basados en el factor_id
         metrics = self.queryset.filter(measures_id=pk)
-        if metrics.exists():
-            serializer = self.get_serializer(metrics, many=True)
-            return Response(serializer.data)
+        serializer = self.get_serializer(metrics, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+    #@action(detail=True, methods=['get'], url_path='metrics-base')
+    #def get_metrics_by_factor(self, request, pk=None, dim_id=None):
+        # Filtrar factores basados en el dimension_id
+    #    metrics = self.queryset.filter(measures_id=pk)
+    #    if metrics.exists():
+    #        serializer = self.get_serializer(metrics, many=True)
+    #        return Response(serializer.data)
         return Response({"detail": "No metrics found for this factor"}, status=status.HTTP_404_NOT_FOUND)
  
-    # En DQMetricBaseViewSet
+
     @action(detail=True, methods=['get'], url_path='methods-base')
     def get_methods_base(self, request, pk=None):
         """Obtiene métodos base asociados a esta métrica base"""
@@ -266,15 +328,22 @@ class DQMetricBaseViewSet(viewsets.ModelViewSet):
 class DQMethodBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMethodBase.objects.all()
     serializer_class = DQMethodBaseSerializer
-
+    
     @action(detail=True, methods=['get'], url_path='methods-base')
     def get_methods_by_metric(self, request, pk=None, dim_id=None, factor_id=None):
         # Filtrar factores basados en el dimension_id
         methods = self.queryset.filter(implements_id=pk)
-        if methods.exists():
-            serializer = self.get_serializer(methods, many=True)
-            return Response(serializer.data)
-        return Response({"detail": "No methods found for this metric"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.get_serializer(methods, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    #@action(detail=True, methods=['get'], url_path='methods-base')
+    #def get_methods_by_metric(self, request, pk=None, dim_id=None, factor_id=None):
+        # Filtrar factores basados en el dimension_id
+    #    methods = self.queryset.filter(implements_id=pk)
+    #    if methods.exists():
+    #        serializer = self.get_serializer(methods, many=True)
+    #        return Response(serializer.data)
+    #    return Response({"detail": "No methods found for this metric"}, status=status.HTTP_404_NOT_FOUND)
 
 
 

@@ -11,7 +11,9 @@ class DQModel(models.Model):
         ('draft', 'Draft'),
         ('finished', 'Finished'),
     ]
-    version = models.CharField(max_length=100)  # identificador de versión del DQModel
+    name = models.CharField(max_length=100) 
+    version = models.CharField(max_length=20, blank=True, null=True)  
+    
     created_at = models.DateTimeField(auto_now_add=True)
     
     status = models.CharField(
@@ -31,10 +33,14 @@ class DQModel(models.Model):
     )
 
     def __str__(self):
-        return self.version
+        return self.name
 
     #evitar que se cambie el estado de un DQModel ya finalizado.
     def save(self, *args, **kwargs):
+        # Si el campo previous_version es null y version no tiene valor, asignar '1.0.0' como valor por defecto
+        if self.previous_version is None and not self.version:
+            self.version = "1.0.0"
+            
         # Obtener el estado anterior si el objeto ya existe
         if self.pk:
             previous = DQModel.objects.get(pk=self.pk)
@@ -58,8 +64,9 @@ class DQModel(models.Model):
 
 # DIMENSIONS, FACTORS, METRICS and METHODS preset
 class DQDimensionBase(models.Model):
-    name = models.CharField(max_length=100, unique=True)  # Ej. "Accuracy"
-    semantic = models.TextField()  # Descripción general de la dimensión.
+    name = models.CharField(max_length=100, unique=True) 
+    semantic = models.TextField() 
+    is_disabled = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -68,6 +75,7 @@ class DQDimensionBase(models.Model):
 class DQFactorBase(models.Model):
     name = models.CharField(max_length=100, unique=True)  # Ej. "Completeness"
     semantic = models.TextField()  # Descripción general del factor.
+    is_disabled = models.BooleanField(default=False)
 
     facetOf = models.ForeignKey(DQDimensionBase, on_delete=models.CASCADE, related_name='factors', null=True, blank=True)
 
@@ -76,10 +84,12 @@ class DQFactorBase(models.Model):
 
 
 class DQMetricBase(models.Model):
-    name = models.CharField(max_length=100, unique=True)  # Ej. "Mean Absolute Error"
-    purpose = models.TextField()  # Objetivo de la métrica.
-    granularity = models.CharField(max_length=100)  # Granularidad de los datos.
-    resultDomain = models.CharField(max_length=100)  # Dominio de resultados.
+    name = models.CharField(max_length=100, unique=True) 
+    purpose = models.TextField() 
+    granularity = models.CharField(max_length=100)  
+    resultDomain = models.CharField(max_length=100) 
+    
+    is_disabled = models.BooleanField(default=False)
 
     measures = models.ForeignKey(DQFactorBase, on_delete=models.CASCADE, related_name='metrics', null=True, blank=True)
 
@@ -88,10 +98,12 @@ class DQMetricBase(models.Model):
 
 
 class DQMethodBase(models.Model):
-    name = models.CharField(max_length=100, unique=True)  # Ej. "Regression Analysis"
-    inputDataType = models.CharField(max_length=100)  # Tipo de dato de entrada.
-    outputDataType = models.CharField(max_length=100)  # Tipo de dato de salida.
-    algorithm = models.TextField()  # Descripción del algoritmo.
+    name = models.CharField(max_length=100, unique=True) 
+    inputDataType = models.CharField(max_length=100) 
+    outputDataType = models.CharField(max_length=100) 
+    algorithm = models.TextField() 
+    
+    is_disabled = models.BooleanField(default=False)
 
     implements = models.ForeignKey(DQMetricBase, on_delete=models.CASCADE, related_name='methods', null=True, blank=True)
 

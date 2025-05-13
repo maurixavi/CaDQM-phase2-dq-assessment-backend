@@ -75,19 +75,7 @@ class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
 class DQDimensionBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQDimensionBase
-        fields = ['id', 'name', 'semantic']
-    
-    def update(self, instance, validated_data):
-        try:
-            # Crear un nuevo objeto usando validated_data (datos modificados)
-            # Se pasa validated_data a `DQDimensionBase.objects.create` para crear un nuevo objeto
-            new_instance = DQDimensionBase.objects.create(**validated_data)
-
-            # Retorna la nueva instancia creada
-            return new_instance
-
-        except Exception as e:
-            raise serializers.ValidationError(f"Error al crear el nuevo DQDimensionBase: {str(e)}")
+        fields = '__all__'  
         
 
 class DQFactorBaseSerializer(serializers.ModelSerializer):
@@ -95,57 +83,24 @@ class DQFactorBaseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DQFactorBase
-        fields = ['id', 'name', 'semantic', 'facetOf']    
+        fields = '__all__'   
     
-    def update(self, instance, validated_data):
-        try:
-            # Crear un nuevo objeto usando validated_data (datos modificados)
-            # Se pasa validated_data a `DQFactorBase.objects.create` para crear un nuevo objeto
-            new_instance = DQFactorBase.objects.create(**validated_data)
-
-            # Retorna la nueva instancia creada
-            return new_instance
-
-        except Exception as e:
-            raise serializers.ValidationError(f"Error al crear el nuevo DQ Factor Base: {str(e)}")
+ 
 
 
 class DQMetricBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQMetricBase
-        fields = ['id', 'name', 'purpose', 'granularity', 'resultDomain', 'measures']
+        fields = '__all__'   
     
-    def update(self, instance, validated_data):
-        try:
-            # Crear un nuevo objeto usando validated_data (datos modificados)
-            # Se pasa validated_data a `DQMetricBase.objects.create` para crear un nuevo objeto
-            new_instance = DQMetricBase.objects.create(**validated_data)
-
-            # Retorna la nueva instancia creada
-            return new_instance
-
-        except Exception as e:
-            raise serializers.ValidationError(f"Error al crear la nueva métrica: {str(e)}")
 
 
 
 class DQMethodBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQMethodBase
-        fields = ['id', 'name', 'inputDataType', 'outputDataType', 'algorithm', 'implements']
+        fields = '__all__'   
     
-    def update(self, instance, validated_data):
-        try:
-            # Crear un nuevo objeto usando validated_data (datos modificados)
-            # Se pasa validated_data a `DQMethodBase.objects.create` para crear un nuevo objeto
-            new_instance = DQMethodBase.objects.create(**validated_data)
-
-            # Retorna la nueva instancia creada
-            return new_instance
-
-        except Exception as e:
-            raise serializers.ValidationError(f"Error al crear la nuevo Metodo: {str(e)}")
-
 
 # DQ MODEL ------------------------------------------------------------------
 
@@ -283,6 +238,7 @@ class DQModelSerializer(serializers.ModelSerializer):
         model = DQModel
         fields = [
             'id',
+            'name',
             'version',
             'created_at',
             'status',
@@ -388,6 +344,20 @@ class DQModelSerializer(serializers.ModelSerializer):
     
     """
     
+    def increment_version(self, current_version):
+        """
+        Incrementa el primer dígito de la versión 
+        Ejemplo: "1.0.0" → "2.0.0"
+        """
+        if not current_version:
+            return "1.0.0"  # Versión inicial si no hay versión
+        
+        try:
+            parts = current_version.split('.')
+            major = int(parts[0]) + 1  # Incrementa el primer número
+            return f"{major}.0.0"      # Reinicia MINOR y PATCH
+        except (ValueError, IndexError):
+            return "1.0.0"  # Fallback si el formato es incorrecto
     
     def create_new_version(self, original_instance):
         """
@@ -395,11 +365,14 @@ class DQModelSerializer(serializers.ModelSerializer):
         Copia todas las relaciones asociadas (dimensiones, factores, etc.)
         """
         # Generar la nueva versión
-        new_version_str = self.get_new_version(original_instance.version)
+        #current_version_number = self.get_new_version(original_instance.version) # Obtiene por ejemplo version "1.0.0"
+        current_version_number = original_instance.version # Obtiene por ejemplo version "1.0.0"
+        new_version_number = self.increment_version(current_version_number) # Ejemplo version "1.0.0" -> "2.0.0"
         
         # Crear la nueva instancia de DQModel
         new_instance = DQModel.objects.create(
-            version=new_version_str,
+            name=original_instance.name, # Mantener el mismo nombre 
+            version=new_version_number, # Nueva versión incrementada
             status='draft',
             previous_version=original_instance
         )
@@ -487,22 +460,7 @@ class DQModelSerializer(serializers.ModelSerializer):
         
         return new_instance
     
-    def get_new_version(self, current_version):
-        
-        """
-        determinar la nueva version
-        Ej.: si la versión actual es 'v1.0', la nueva será 'v1.1'.
-        """
-        try:
-            prefix, number = current_version.split('v')
-            new_number = float(number) + 0.1
-            return f"{prefix} v{new_number:.1f}"
-        except ValueError:
-            # Si no sigue el formato esperado, asignar una versión por defecto
-            new_version = current_version + " New Version"
-            return new_version
-        
-        
+    
     def update(self, instance, validated_data):
         # Verificar si el DQModel está finalizado
         if instance.status == 'finished':
@@ -515,9 +473,6 @@ class DQModelSerializer(serializers.ModelSerializer):
         instance.status = validated_data.get('status', instance.status)
         instance.finished_at = validated_data.get('finished_at', instance.finished_at)
         instance.save()
-
-        # Manejar actualizaciones de asociaciones si es necesario
-        # Esto puede ser complejo y requerir manejo adicional de relaciones
 
         return instance
 

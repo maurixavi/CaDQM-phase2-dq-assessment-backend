@@ -18,6 +18,8 @@ from .views import (
     RowResultsViewSet,
     TableResultsViewSet,
     generate_dqmethod_suggestion,
+    generate_dq_dim_factor_suggestion,
+    
     create_initial_prioritized_dq_problems,
     get_full_dqmodel,
     get_prioritized_dq_problems,
@@ -92,7 +94,12 @@ urlpatterns = [
         name='dqmodel-dimension-factor-metric-methods'
     ),
     
+    # AI SUGGESTIONS
     path('generate-dqmethod-suggestion/', generate_dqmethod_suggestion, name='generate_dqmethod_suggestion'),
+    
+    path('generate-dq-dimension-factor-suggestion/', generate_dq_dim_factor_suggestion, name='generate_dq_dim_factor_suggestion'),
+    
+    
     path('prioritized-dq-problems/', create_initial_prioritized_dq_problems, name='create_initial_prioritized_dq_problems'),
     path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/', get_prioritized_dq_problems, name='get_prioritized_dq_problems'),
     path('dqmodels/<int:dq_model_id>/selected-prioritized-dq-problems/', get_selected_prioritized_dq_problems, name='get_selected_prioritized_dq_problems'),

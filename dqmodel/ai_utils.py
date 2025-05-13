@@ -165,3 +165,4 @@ def generate_ai_suggestion(dq_metric: dict) -> dict:
             "error": f"Error generating suggestion: {str(e)}",
             "implements": dq_metric["id"]
         }
+    
