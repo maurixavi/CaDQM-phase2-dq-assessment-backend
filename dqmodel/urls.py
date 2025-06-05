@@ -20,11 +20,11 @@ from .views import (
     generate_dqmethod_suggestion,
     generate_dq_dim_factor_suggestion,
     
-    create_initial_prioritized_dq_problems,
+    #create_initial_prioritized_dq_problems,
     get_full_dqmodel,
-    get_prioritized_dq_problems,
-    get_selected_prioritized_dq_problems,
-    PrioritizedDqProblemDetailView
+    #get_prioritized_dq_problems,
+    #get_selected_prioritized_dq_problems,
+    #PrioritizedDqProblemDetailView
 )
 
 router = routers.DefaultRouter()
@@ -41,11 +41,11 @@ router.register(r'metrics-base', DQMetricBaseViewSet)
 router.register(r'methods-base', DQMethodBaseViewSet)
 router.register(r'measurement-methods', MeasurementDQMethodViewSet)
 router.register(r'aggregation-methods', AggregationDQMethodViewSet)
-router.register(
-    r'dqmodels/(?P<dq_model_id>\d+)/prioritized-dq-problems',
-    PrioritizedDqProblemDetailView,
-    basename='prioritized-dq-problem'
-)
+#router.register(
+#    r'dqmodels/(?P<dq_model_id>\d+)/prioritized-dq-problems',
+#    PrioritizedDqProblemDetailView,
+#    basename='prioritized-dq-problem'
+#)
 
 router.register(r'execution-results', DQExecutionResultViewSet, basename='execution-results')
 
@@ -100,9 +100,9 @@ urlpatterns = [
     path('generate-dq-dimension-factor-suggestion/', generate_dq_dim_factor_suggestion, name='generate_dq_dim_factor_suggestion'),
     
     
-    path('prioritized-dq-problems/', create_initial_prioritized_dq_problems, name='create_initial_prioritized_dq_problems'),
-    path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/', get_prioritized_dq_problems, name='get_prioritized_dq_problems'),
-    path('dqmodels/<int:dq_model_id>/selected-prioritized-dq-problems/', get_selected_prioritized_dq_problems, name='get_selected_prioritized_dq_problems'),
+    #path('prioritized-dq-problems/', create_initial_prioritized_dq_problems, name='create_initial_prioritized_dq_problems'),
+    #path('dqmodels/<int:dq_model_id>/prioritized-dq-problems/', get_prioritized_dq_problems, name='get_prioritized_dq_problems'),
+    #path('dqmodels/<int:dq_model_id>/selected-prioritized-dq-problems/', get_selected_prioritized_dq_problems, name='get_selected_prioritized_dq_problems'),
     
     # Individual Views: Dim, Factor, Metric and Method in DQ Model
     path(
@@ -156,6 +156,12 @@ urlpatterns = [
         name='dqmodel-applied-method-assess'
     ),
     
+    
+    path(
+        "dqmodels/<int:dq_model_id>/start-dq-model-execution/",
+        DQModelViewSet.as_view({'post': 'start_dq_model_execution'}),
+        name='dqmodel-create-execution'
+    ),
     path(
         "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execute/",
         DQModelViewSet.as_view({'post': 'execute_applied_method'}),
@@ -276,6 +282,12 @@ urlpatterns = [
         'dqmodels/<int:dq_model_id>/execution-results/<uuid:execution_id>/',
         DQExecutionResultViewSet.as_view({'get': 'get_dq_model_execution_results'}),
         name='dqmodel-execution-results'
+    ),
+    
+    path(
+        'dqmodels/<int:dq_model_id>/current-execution/',
+        DQExecutionResultViewSet.as_view({'get': 'get_current_execution'}),
+        name='dqmodel-current-execution'
     ),
     
     

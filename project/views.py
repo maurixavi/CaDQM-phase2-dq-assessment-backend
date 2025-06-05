@@ -1,26 +1,36 @@
-from rest_framework.response import Response
-from django.shortcuts import render
-from rest_framework import viewsets
-from .models import DataAtHand, DataSchema, PrioritizedDQProblem, Project
-from .serializer import DataAtHandSerializer, DataSchemaSerializer, PrioritizedDqProblemSerializer, ProjectSerializer
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from .models import ContextModel
+# Standard library imports
 import json
-from django.http import JsonResponse
-from django.conf import settings
 import os
-from django.core.exceptions import ImproperlyConfigured
-from .models import PrioritizedDQProblem, Project
-from rest_framework import viewsets, status
-import requests
-from rest_framework.decorators import action, api_view
 
+# Third-party imports
 import psycopg2
+import requests
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, render
+from rest_framework import status, viewsets
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
-from rest_framework import status
 
+# Local application imports
+from .models import (
+    ContextModel,
+    DataAtHand,
+    DataSchema,
+    PrioritizedDQProblem,
+    Project
+)
+from .serializer import (
+    DataAtHandSerializer,
+    DataSchemaSerializer,
+    PrioritizedDqProblemSerializer,
+    ProjectSerializer
+)
 
+# ==============================================
+# Project Related Views
+# ==============================================
 
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all().order_by('-id')
@@ -61,80 +71,66 @@ class ProjectViewSet(viewsets.ModelViewSet):
         })
 
 
-# Endpoint genérico para obtener todos los problemas de calidad disponibles en el sistema
+# ==============================================
+# DQ Problems Related Views
+# ==============================================
+
 def load_dq_problems_dataset():
-    # Ruta del archivo JSON
+    """
+    Load and return the predefined dataset of DQ problems from a JSON file.
+    """
     file_path = os.path.join(os.path.dirname(__file__), 'dq_problems_dataset.json')  
-    
-    print(f"Ruta del archivo JSON: {file_path}")  # Imprimir la ruta del archivo para verificar
     
     try:
         with open(file_path, 'r') as json_file:
             data = json.load(json_file)
-            
-        print("Archivo JSON leído correctamente.")  
-        print("Contenido del archivo JSON:", data) 
-        
-        # Agregando los headers a la respuesta
-        #response = JsonResponse(data, safe=False)
-        #response['access-token'] = 'your_access_token_here'
-        #response['project-id'] = 'your_project_id_here'
-        #return response
-        
         return JsonResponse(data, safe=False)
     
     except FileNotFoundError:
-        print("Error: El archivo JSON no se encuentra.") 
         return JsonResponse({"error": "Archivo no encontrado"}, status=404)
     except Exception as e:
-        print(f"Error al procesar el archivo JSON: {str(e)}") 
         return JsonResponse({"error": str(e)}, status=500)
-    
 
-# Endpoint especifico para obtener problemas de calidad asociados a un proyecto específico
+
+
 def get_project_dq_problems(request, project_id):
+    """
+    Get DQ problems associated with a specific project.
+    Currently returns the static JSON dataset.
+    """
     project = get_object_or_404(Project, id=project_id)
-    
-    # agregar la logica para obtener los problemas de calidad asociados al proyecto
-    # Por ahora, simplemente devolvemos el JSON estático como en load_dq_problems_dataset
     file_path = os.path.join(os.path.dirname(__file__), 'dq_problems_dataset.json')
     
     try:
         with open(file_path, 'r') as json_file:
             data = json.load(json_file)
-        # modificar `data` para incluir información específica del proyecto si es necesario
-        # por ejemplo, data['project_id'] = project_id
         return JsonResponse(data, safe=False)
     except FileNotFoundError:
         return JsonResponse({"error": "Archivo no encontrado"}, status=404)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
 
 def get_dq_problem_by_id(request, project_id, problem_id):
     """
-    Obtiene un problema de calidad específico por su ID.
+    Get a specific DQ problem by its ID from the dataset.
     """
-    # Ruta del archivo JSON
     file_path = os.path.join(os.path.dirname(__file__), 'dq_problems_dataset.json')
     
     try:
         with open(file_path, 'r') as json_file:
             data = json.load(json_file)
         
-        # Buscar el problema por su ID
         problem = next((item for item in data if item["id"] == problem_id), None)
         
         if problem:
             return JsonResponse(problem, safe=False)
-        else:
-            return JsonResponse({"error": "Problema no encontrado"}, status=404)
+        return JsonResponse({"error": "Problema no encontrado"}, status=404)
     
     except FileNotFoundError:
         return JsonResponse({"error": "Archivo no encontrado"}, status=404)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
-
-
 
 
 class PrioritizedDQProblemViewSet(viewsets.ModelViewSet):
@@ -142,7 +138,7 @@ class PrioritizedDQProblemViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Filtra los problemas priorizados por proyecto si se proporciona un project_id.
+        Filter prioritized problems by project_id
         """
         queryset = PrioritizedDQProblem.objects.all()
         project_id = self.kwargs.get('project_id')
@@ -150,35 +146,28 @@ class PrioritizedDQProblemViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(project_id=project_id)
         return queryset
     
-    # El método retrieve ya está implementado por ModelViewSet
-    # No necesitas definir get_prioritized_dq_problem si usas retrieve
     
     def partial_update(self, request, *args, **kwargs):
+        """
+        Handle PATCH requests for partial updates.
+        """
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
 
-#class PrioritizedDQProblemViewSet(viewsets.ModelViewSet):
-#    queryset = PrioritizedDQProblem.objects.all()
-#    serializer_class = PrioritizedDqProblemSerializer
-    
-    #def get_queryset(self):
-        # Filtrar los problemas priorizados por DQModel si se proporciona un dq_model_id
-        #dq_model_id = self.request.query_params.get('dq_model_id')
-        #if dq_model_id:
-        #    return PrioritizedDQProblem.objects.filter(dq_model_id=dq_model_id)
-        #return PrioritizedDQProblem.objects.all()
-
 
 @api_view(['GET'])
 def get_selected_prioritized_dq_problems_by_project(request, project_id):
     """
-    Devuelve solo los problemas priorizados seleccionados (is_selected=True) para un Project específico.
+    Get only selected (is_selected=True) prioritized DQ problems for a project.
     """
     project = get_object_or_404(Project, pk=project_id)
-    selected_problems = PrioritizedDQProblem.objects.filter(project=project, is_selected=True)
+    selected_problems = PrioritizedDQProblem.objects.filter(
+        project=project, 
+        is_selected=True
+    )
 
     if selected_problems.exists():
         serializer = PrioritizedDqProblemSerializer(selected_problems, many=True)
@@ -188,20 +177,16 @@ def get_selected_prioritized_dq_problems_by_project(request, project_id):
         {"detail": "No selected prioritized problems found for this Project"},
         status=status.HTTP_404_NOT_FOUND
     )
-    
 
-#DATA AT HAND and DATA SCHEMA
 
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from .models import DataAtHand, DataSchema
-from .serializer import DataAtHandSerializer, DataSchemaSerializer
-import psycopg2
+
+# ==============================================
+# Data Source and Schema Related Views
+# ==============================================
 
 class DataAtHandViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing DataAtHand instances.
+    API endpoint for managing DataAtHand instances (data sources).
     """
     queryset = DataAtHand.objects.all()
     serializer_class = DataAtHandSerializer
@@ -224,12 +209,11 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def test_connection(self, request, pk=None):
         """
-        Custom action to test the database connection for a specific DataAtHand instance.
+        Test the database connection for a specific DataAtHand instance.
         """
         instance = self.get_object()
 
         try:
-            # Intenta conectarte a la base de datos
             connection = psycopg2.connect(
                 dbname=instance.dbname,
                 user=instance.user,
@@ -237,7 +221,7 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
                 host=instance.host,
                 port=instance.port
             )
-            connection.close()  # Cierra la conexión
+            connection.close() 
             return Response({"status": "Connection successful"}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -245,12 +229,11 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def test_connection_and_get_schema(self, request, pk=None):
         """
-        Custom action to test the database connection and retrieve the schema.
+        Test database connection and retrieve schema information.
         """
         instance = self.get_object()
 
         try:
-            # Conéctate a la base de datos
             connection = psycopg2.connect(
                 dbname=instance.dbname,
                 user=instance.user,
@@ -259,10 +242,8 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
                 port=instance.port
             )
 
-            # Obtén el esquema de la base de datos
             schema = self.get_database_schema(connection)
-
-            connection.close()  # Cierra la conexión
+            connection.close() 
 
             return Response({
                 "status": "Connection successful",
@@ -275,7 +256,7 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def data_schema(self, request, pk=None):
         """
-        Custom action to retrieve the schema for a specific DataAtHand instance.
+        Retrieve or generate schema information for a DataAtHand instance.
         """
         instance = self.get_object()
 
@@ -315,7 +296,7 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
     
     def get_database_schema(self, connection):
         """
-        Retrieves the schema of the database as a flat list of tables.
+        Retrieve database schema as a structured list of tables with columns.
         """
         try:
             tables = self.get_tables_info(connection)
@@ -343,7 +324,7 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
 
     def get_tables_info(self, connection):
         """
-        Retrieves detailed information about tables in the database.
+        Retrieve detailed information about tables in the database.
         """
         cursor = connection.cursor()
         cursor.execute("""
@@ -363,7 +344,7 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
 
     def get_table_columns_enhanced(self, connection, table_name):
         """
-        Retrieves enhanced information about columns of a specific table.
+        Retrieve enhanced column information for a specific table.
         """
         cursor = connection.cursor()
         cursor.execute("""
@@ -400,9 +381,10 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
         
         return columns
 
+
 class DataSchemaViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing DataSchema instances.
+    API endpoint for managing DataSchema instances.
     """
     queryset = DataSchema.objects.all()
     serializer_class = DataSchemaSerializer
