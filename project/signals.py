@@ -1,12 +1,17 @@
 # project/signals.py
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
-from dqmodel.models import DQModel
+from dqmodel.models import DQModel, DQModelExecution
 from .models import PrioritizedDQProblem, Project, ProjectStage
 from django.conf import settings
 import requests
 from django.db import transaction
 
+import logging
+import traceback
+
+
+logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Project)
 def initialize_project_stages(sender, instance, created, **kwargs):
@@ -108,8 +113,48 @@ def update_project_stage_and_status(sender, instance, created, **kwargs):
         stage_obj.save()
 
 
+@receiver(post_save, sender=DQModelExecution)
+def update_stage5_on_execution(sender, instance, **kwargs):
+    """
+    Actualiza ST5 del proyecto según las ejecuciones del DQModel.
+    Si hay al menos una ejecución completada → ST5 = DONE.
+    Si no hay completadas pero hay alguna activa → ST5 = IN_PROGRESS.
+    """
+    dq_model_id = instance.dq_model_id
+
+    try:
+        project = Project.objects.get(dqmodel_version_id=dq_model_id)
+    except Project.DoesNotExist:
+        logger.warning(f"[ST5 Update] No se encontró un Project asociado a dq_model_id={dq_model_id}")
+        return
+
+    try:
+        executions = DQModelExecution.objects.using('metadata_db').filter(dq_model_id=dq_model_id)
+
+        has_completed = executions.filter(completed_at__isnull=False).exists()
+        has_active = executions.filter(completed_at__isnull=True).exists()
+
+        new_status = None
+        if has_completed:
+            new_status = ProjectStage.Status.DONE
+        elif has_active:
+            new_status = ProjectStage.Status.IN_PROGRESS
+
+        if new_status:
+            stage5 = project.get_stage('ST5')
+            if stage5 and stage5.status != new_status:
+                logger.info(f"[ST5 Update] Actualizando ST5 para el proyecto '{project.name}' a estado '{new_status}'")
+                stage5.status = new_status
+                stage5.save()
+            else:
+                logger.debug(f"[ST5 Update] ST5 ya está en estado '{new_status}' o no existe.")
+    except Exception as e:
+        logger.error(f"[ST5 Update] Error al actualizar ST5 para dq_model_id={dq_model_id}: {str(e)}", exc_info=True)
 
 
+# --------------
+# DQ PROBLEMS
+# --------------
 @receiver(post_save, sender=Project)
 def initialize_prioritized_problems(sender, instance, created, **kwargs):
     """
