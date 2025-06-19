@@ -1,0 +1,758 @@
+{
+  "total_recommendations": 13,
+  "total_executions": 62,
+  "total_tokens": {
+    "prompt": 17728,
+    "completion": 3090,
+    "total": 20818,
+    "time": 5.187992608
+  },
+  "recommendations": [
+    {
+      "recommended_dimension": "Completeness",
+      "recommended_factor": "Density",
+      "supported_by_problems": [
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherMeta": [],
+        "sysReq": [],
+        "task": [
+          11
+        ],
+        "userType": []
+      },
+      "rationale": "The recommended dimension 'Completeness' is supported by multiple data quality problems, particularly null values in required fields, inconsistent data formats, and duplicated records, which are all related to missing or inaccurate data. The 'Density' factor is a strong supporting evidence, as it measures the proportion of actual data entries compared to the total possible entries, which is directly related to the presence of null values and duplicated records. The recommended factor is also supported by the business rules, data filters, and quality requirements, which emphasize the importance of ensuring completeness and accuracy in the data.",
+      "tokens_used": {
+        "prompt_tokens": 1526,
+        "completion_tokens": 240,
+        "total_tokens": 1766,
+        "input_tokens": 1526,
+        "output_tokens": 240,
+        "total_tokens_alt": 1766,
+        "prompt_time": 0.216050128,
+        "completion_time": 0.2,
+        "total_time": 0.416050128,
+        "queue_time": 0.31862531699999996
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 6,
+      "total_time": 2.4963007680000002
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Intra-relationship Integrity",
+      "supported_by_problems": [
+        3,
+        6,
+        8,
+        11
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [],
+        "task": [
+          11,
+          12
+        ],
+        "userType": [
+          12,
+          13
+        ]
+      },
+      "rationale": "Inconsistent data formats and duplicated records suggest a lack of intra-relationship integrity, which is a critical aspect of data consistency. The business rule 'Prevent multiple reviews per user and book' and the data filter 'Include only English reviews published since 2018' also support this selection. Moreover, the task 'Calculate sentiment scores' and the user types 'Marketing analysts', 'Data scientists', and 'Academic researchers' are all dependent on consistent data.",
+      "tokens_used": {
+        "prompt_tokens": 1508,
+        "completion_tokens": 224,
+        "total_tokens": 1732,
+        "input_tokens": 1508,
+        "output_tokens": 224,
+        "total_tokens_alt": 1732,
+        "prompt_time": 0.187675943,
+        "completion_time": 0.186666667,
+        "total_time": 0.37434261,
+        "queue_time": 0.1941584
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.37434261
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Domain Integrity",
+      "supported_by_problems": [
+        3,
+        4,
+        6,
+        8,
+        11,
+        12,
+        14
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12
+        ],
+        "userType": [
+          12,
+          13
+        ]
+      },
+      "rationale": "The selected factor, Domain Integrity, ensures that data values conform to defined domain rules, addressing issues such as inconsistent data formats and out-of-range values. This factor is strongly supported by problems like duplicated records, data conflicts, and missing timestamps. The context components, including the app domain, business rules, data filters, and data requirements, also emphasize the importance of maintaining data consistency. By recommending Domain Integrity, we can ensure that the data is coherent and reliable, enabling accurate analysis and decision-making.",
+      "tokens_used": {
+        "prompt_tokens": 1488,
+        "completion_tokens": 247,
+        "total_tokens": 1735,
+        "input_tokens": 1488,
+        "output_tokens": 247,
+        "total_tokens_alt": 1735,
+        "prompt_time": 0.382254261,
+        "completion_time": 0.205833333,
+        "total_time": 0.588087594,
+        "queue_time": 0.21120256399999998
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 6,
+      "total_time": 3.5285255639999997
+    },
+    {
+      "recommended_dimension": "Completeness",
+      "recommended_factor": "Coverage",
+      "supported_by_problems": [
+        3
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [
+          6
+        ],
+        "task": [
+          11
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension is Completeness, specifically the factor Coverage, due to the presence of null values in required fields and inconsistent data formats, which indicates that the data may be incomplete or missing, impacting analysis and decision-making. This dimension is supported by various context components, including the app domain, business rules, data filters, data quality metadata, and user types, highlighting the importance of ensuring data completeness and coverage.",
+      "tokens_used": {
+        "prompt_tokens": 1474,
+        "completion_tokens": 210,
+        "total_tokens": 1684,
+        "input_tokens": 1474,
+        "output_tokens": 210,
+        "total_tokens_alt": 1684,
+        "prompt_time": 0.201758304,
+        "completion_time": 0.175,
+        "total_time": 0.376758304,
+        "queue_time": 0.19538696300000002
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 2,
+      "total_time": 0.753516608
+    },
+    {
+      "recommended_dimension": "Uniqueness",
+      "recommended_factor": "No-duplication",
+      "supported_by_problems": [
+        3,
+        8
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          3
+        ],
+        "dqMeta": [],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [],
+        "sysReq": [],
+        "task": [
+          11
+        ],
+        "userType": [
+          12
+        ]
+      },
+      "rationale": "The recommended dimension is Uniqueness, specifically the factor No-duplication, as it is well-supported by problems 3 (Duplicated records) and 8 (Redundant entries). The context components, such as the business rule (Prevent multiple reviews per user and book), data filter (Include only unique combinations), and dq requirement (Ensure data integrity), all point to the importance of ensuring data uniqueness. This factor is particularly relevant in the context of e-commerce, where duplicate reviews can negatively impact the credibility of the platform and its users.",
+      "tokens_used": {
+        "prompt_tokens": 1412,
+        "completion_tokens": 234,
+        "total_tokens": 1646,
+        "input_tokens": 1412,
+        "output_tokens": 234,
+        "total_tokens_alt": 1646,
+        "prompt_time": 0.284908778,
+        "completion_time": 0.195,
+        "total_time": 0.479908778,
+        "queue_time": 0.701302284
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 4,
+      "total_time": 1.919635112
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Semantic Accuracy",
+      "supported_by_problems": [
+        1,
+        3,
+        6,
+        7
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [
+          6
+        ],
+        "task": [
+          11
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The dimension of Accuracy is crucial in this context due to the high likelihood of incorrect or outdated data. The 'Semantic Accuracy' factor is the most relevant, as it ensures that the data correctly represents entities or states of the real world. This factor is strongly supported by problems 1, 3, 6, and 7, which involve incorrect or inconsistent data. The context components that support this recommendation include the E-commerce of printed and digital books, business rules, data filters, data quality metadata, and tasks that require accurate data, such as calculating sentiment scores and generating quality rankings. The marketing analysts, data scientists, and academic researchers who use this data also rely on accurate information to make informed decisions.",
+      "tokens_used": {
+        "prompt_tokens": 1392,
+        "completion_tokens": 279,
+        "total_tokens": 1671,
+        "input_tokens": 1392,
+        "output_tokens": 279,
+        "total_tokens_alt": 1671,
+        "prompt_time": 0.173207492,
+        "completion_time": 0.2325,
+        "total_time": 0.405707492,
+        "queue_time": 0.193971392
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 2,
+      "total_time": 0.811414984
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Precision",
+      "supported_by_problems": [
+        1,
+        2,
+        6
+      ],
+      "supported_by_context": {
+        "appDomain": [],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3
+        ],
+        "dqMeta": [],
+        "dqReq": [
+          7
+        ],
+        "otherMeta": [],
+        "sysReq": [],
+        "task": [
+          11
+        ],
+        "userType": [
+          12
+        ]
+      },
+      "rationale": "The 'Accuracy' dimension is recommended due to the presence of problems such as 'Null values in required fields' and 'Incorrect categorization', which indicate a lack of precision in the data. Additionally, the 'bizRule' and 'dataFilter' context components support this recommendation, as they specify rules for rating ranges and review inclusion, respectively. The 'task' and 'userType' components also support this recommendation, as they involve calculating sentiment scores and analyzing linguistic bias, respectively.",
+      "tokens_used": {
+        "prompt_tokens": 1374,
+        "completion_tokens": 210,
+        "total_tokens": 1584,
+        "input_tokens": 1374,
+        "output_tokens": 210,
+        "total_tokens_alt": 1584,
+        "prompt_time": 0.171864335,
+        "completion_time": 0.175,
+        "total_time": 0.346864335,
+        "queue_time": 0.02218487999999999
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 6,
+      "total_time": 2.08118601
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Inter-relationship Integrity",
+      "supported_by_problems": [
+        3,
+        10,
+        11,
+        12
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [
+          6
+        ],
+        "task": [
+          11,
+          12
+        ],
+        "userType": [
+          12,
+          13
+        ]
+      },
+      "rationale": "The Consistency dimension is relevant due to the presence of duplicated records and inconsistencies across sources. The Inter-relationship Integrity factor is strong evidence of this, as it ensures data across multiple datasets is consistent. The supported problems include duplicated records, inconsistent data formats, and missing relationships, which all relate to inconsistencies. The context components, such as appDomain, bizRule, dataFilter, dqMeta, dqReq, otherMeta, sysReq, task, and userType, also support the recommendation, highlighting the importance of ensuring consistency in data quality.",
+      "tokens_used": {
+        "prompt_tokens": 1360,
+        "completion_tokens": 248,
+        "total_tokens": 1608,
+        "input_tokens": 1360,
+        "output_tokens": 248,
+        "total_tokens_alt": 1608,
+        "prompt_time": 0.169896911,
+        "completion_time": 0.206666667,
+        "total_time": 0.376563578,
+        "queue_time": 0.194008453
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 4,
+      "total_time": 1.506254312
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Currency",
+      "supported_by_problems": [
+        3,
+        9
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [
+          6
+        ],
+        "task": [
+          11
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The 'Freshness' dimension is recommended because it directly addresses the issue of data staleness, which is a common problem in data quality. The 'Currency' factor is the strongest supporting evidence, as it measures the recency of the data, which is critical for ensuring the accuracy and reliability of the data. The supported problems include data being out of date and missing timestamps, which are indicative of data staleness. The supported context includes business rules, data filters, and data requirements that all rely on fresh and up-to-date data, as well as tasks and user types that involve data analysis and processing.",
+      "tokens_used": {
+        "prompt_tokens": 1302,
+        "completion_tokens": 252,
+        "total_tokens": 1554,
+        "input_tokens": 1302,
+        "output_tokens": 252,
+        "total_tokens_alt": 1554,
+        "prompt_time": 0.189321092,
+        "completion_time": 0.21,
+        "total_time": 0.399321092,
+        "queue_time": 0.19470445100000003
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 10,
+      "total_time": 3.99321092
+    },
+    {
+      "recommended_dimension": "Uniqueness",
+      "recommended_factor": "No-contradiction",
+      "supported_by_problems": [
+        3
+      ],
+      "supported_by_context": {
+        "appDomain": [],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [],
+        "dqMeta": [],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [],
+        "sysReq": [],
+        "task": [],
+        "userType": []
+      },
+      "rationale": "The recommended dimension and factor combination is Uniqueness-No-contradiction, as it is strongly supported by problem descriptions, such as duplicated records. This dimension and factor combination ensures data integrity and prevents conflicting entries within the dataset, which is essential for the E-commerce application. The business rule 'Each combination (asin, reviewerID) must be unique' further reinforces the importance of this dimension and factor combination.",
+      "tokens_used": {
+        "prompt_tokens": 1287,
+        "completion_tokens": 195,
+        "total_tokens": 1482,
+        "input_tokens": 1287,
+        "output_tokens": 195,
+        "total_tokens_alt": 1482,
+        "prompt_time": 0.176191134,
+        "completion_time": 0.1625,
+        "total_time": 0.338691134,
+        "queue_time": 0.291553422
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 11,
+      "total_time": 3.725602474
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Timeliness",
+      "supported_by_problems": [
+        1,
+        2,
+        3,
+        5,
+        9,
+        10,
+        11,
+        12
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The 'Freshness' dimension, particularly the 'Timeliness' factor, is recommended because it directly addresses the issues of null values in required fields, inconsistent data formats, and data out of range limits. The app domain, business rules, and data filter all suggest a need for timely data. The data quality requirements and tasks also emphasize the importance of timely data, and the user types' characteristics suggest that they rely on up-to-date information.",
+      "tokens_used": {
+        "prompt_tokens": 1226,
+        "completion_tokens": 249,
+        "total_tokens": 1475,
+        "input_tokens": 1226,
+        "output_tokens": 249,
+        "total_tokens_alt": 1475,
+        "prompt_time": 0.163957983,
+        "completion_time": 0.2075,
+        "total_time": 0.371457983,
+        "queue_time": 0.276542442
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 4,
+      "total_time": 1.485831932
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Syntactic Accuracy",
+      "supported_by_problems": [
+        1,
+        3,
+        5,
+        7,
+        11,
+        15
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherMeta": [],
+        "sysReq": [],
+        "task": [
+          12
+        ],
+        "userType": [
+          12
+        ]
+      },
+      "rationale": "The accuracy dimension is crucial due to the presence of null values in required fields, inconsistent data formats, and data out of range limits. Syntactic accuracy is a strong supporting evidence, as it ensures the data is free from errors. This dimension and factor combination is well-supported by the system context, particularly by the business rules, data filters, and quality requirements. The importance of accuracy is also emphasized by the tasks and user types, which highlight the need for precise and correct data for sentiment analysis and quality ranking.",
+      "tokens_used": {
+        "prompt_tokens": 1213,
+        "completion_tokens": 235,
+        "total_tokens": 1448,
+        "input_tokens": 1213,
+        "output_tokens": 235,
+        "total_tokens_alt": 1448,
+        "prompt_time": 0.150913223,
+        "completion_time": 0.195833333,
+        "total_time": 0.346746556,
+        "queue_time": 0.19473117199999998
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.346746556
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Volatility",
+      "supported_by_problems": [
+        1,
+        2,
+        4,
+        9,
+        10
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherMeta": [
+          8
+        ],
+        "task": [
+          11
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The 'Freshness' dimension is crucial for data quality, as the recency and update status of the data directly impact the accuracy and relevance of the information. The 'Volatility' factor within 'Freshness' dimension is particularly relevant, as it indicates the rate at which the data changes over time. This factor is supported by various data quality problems, such as null values in required fields, inconsistent data formats, and data out of range limits, which all contribute to the degradation of data freshness. Furthermore, the context components, including business rules, data filters, metadata, and user types, all emphasize the importance of ensuring data freshness and volatility in the e-commerce book review dataset.",
+      "tokens_used": {
+        "prompt_tokens": 1166,
+        "completion_tokens": 267,
+        "total_tokens": 1433,
+        "input_tokens": 1166,
+        "output_tokens": 267,
+        "total_tokens_alt": 1433,
+        "prompt_time": 0.144993024,
+        "completion_time": 0.2225,
+        "total_time": 0.367493024,
+        "queue_time": 0.19351080099999998
+      },
+      "model_metadata": {
+        "model_name": "llama3-8b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 5,
+      "total_time": 1.83746512
+    }
+  ],
+  "average_metrics": {
+    "executions_per_recommendation": 4.769230769230769,
+    "tokens_per_recommendation": {
+      "prompt": 1363.6923076923076,
+      "completion": 237.69230769230768,
+      "total": 1601.3846153846155
+    },
+    "time_per_recommendation": 0.39907635446153844
+  }
+}

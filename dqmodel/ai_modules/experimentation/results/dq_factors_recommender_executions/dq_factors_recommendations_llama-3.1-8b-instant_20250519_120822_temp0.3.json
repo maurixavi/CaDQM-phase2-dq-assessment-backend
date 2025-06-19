@@ -1,0 +1,1015 @@
+{
+  "total_recommendations": 13,
+  "total_executions": 15,
+  "total_tokens": {
+    "prompt": 17991,
+    "completion": 3307,
+    "total": 21298,
+    "time": 5.959200466
+  },
+  "total_cost_usd": {
+    "input_cost_usd": 0.0009010000000000001,
+    "output_cost_usd": 0.000263,
+    "total_cost_usd": 0.001164
+  },
+  "recommendations": [
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Inter-relationship Integrity",
+      "supported_by_problems": [
+        3,
+        10,
+        12,
+        13,
+        14
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension is Consistency, specifically Inter-relationship Integrity, as it is supported by problems related to data inconsistencies and conflicts across multiple datasets. This factor is also supported by context components such as business rules, data filters, and system requirements that emphasize data integrity and consistency. The rationale for selecting this factor is to ensure that data is coherent and reliable across different sources and over time, which is critical for data-driven decision-making and analysis.",
+      "tokens_used": {
+        "prompt_tokens": 1551,
+        "completion_tokens": 238,
+        "total_tokens": 1789,
+        "input_tokens": 1551,
+        "output_tokens": 238,
+        "total_tokens_alt": 1789,
+        "prompt_time": 0.153385946,
+        "completion_time": 0.380816077,
+        "total_time": 0.534202023,
+        "queue_time": 5.785859932999999
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.534202023,
+      "token_cost_usd": {
+        "input_cost_usd": 7.8e-05,
+        "output_cost_usd": 1.9e-05,
+        "total_cost_usd": 9.7e-05
+      }
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Domain Integrity",
+      "supported_by_problems": [
+        3,
+        12,
+        13,
+        14,
+        16
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension is Consistency, as it is well-supported by problems related to data integrity and conflicts. The recommended factor is Domain Integrity, as it is a key aspect of Consistency and is supported by various context components, including business rules, data filters, and system requirements. This recommendation encourages coverage across dimensions and highlights the importance of maintaining data integrity in the e-commerce domain.",
+      "tokens_used": {
+        "prompt_tokens": 1533,
+        "completion_tokens": 227,
+        "total_tokens": 1760,
+        "input_tokens": 1533,
+        "output_tokens": 227,
+        "total_tokens_alt": 1760,
+        "prompt_time": 0.090469128,
+        "completion_time": 0.302666667,
+        "total_time": 0.393135795,
+        "queue_time": 7.709459256000001
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 3,
+      "total_time": 1.179407385,
+      "token_cost_usd": {
+        "input_cost_usd": 7.7e-05,
+        "output_cost_usd": 1.8e-05,
+        "total_cost_usd": 9.5e-05
+      }
+    },
+    {
+      "recommended_dimension": "Completeness",
+      "recommended_factor": "Density",
+      "supported_by_problems": [
+        3,
+        8,
+        13,
+        11
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          13
+        ],
+        "userType": [
+          12,
+          13
+        ]
+      },
+      "rationale": "The recommended dimension is Completeness, as it is supported by problems related to duplicated records, redundant entries, and missing relationships. The recommended factor is Density, as it is relevant to ensuring that the data is complete and free from gaps. The context components that support this recommendation include business rules that prevent multiple reviews per user and book, data filters that exclude short reviews, and data quality metadata that measures completeness. Additionally, the system requirements for completeness metric and the tasks related to data integrity and quality ranking further reinforce this recommendation.",
+      "tokens_used": {
+        "prompt_tokens": 1519,
+        "completion_tokens": 242,
+        "total_tokens": 1761,
+        "input_tokens": 1519,
+        "output_tokens": 242,
+        "total_tokens_alt": 1761,
+        "prompt_time": 0.12985898,
+        "completion_time": 0.336004076,
+        "total_time": 0.465863056,
+        "queue_time": 1.7287169079999998
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.465863056,
+      "token_cost_usd": {
+        "input_cost_usd": 7.6e-05,
+        "output_cost_usd": 1.9e-05,
+        "total_cost_usd": 9.5e-05
+      }
+    },
+    {
+      "recommended_dimension": "Uniqueness",
+      "recommended_factor": "No-duplication",
+      "supported_by_problems": [
+        3,
+        8,
+        13
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The Uniqueness dimension is recommended due to the presence of duplicate records and redundant entries. The No-duplication factor is the most relevant as it directly addresses the issue of duplicate entries. The supported problems and context components indicate a need to ensure data integrity and prevent multiple reviews per user and book, which aligns with the Uniqueness dimension and No-duplication factor.",
+      "tokens_used": {
+        "prompt_tokens": 1501,
+        "completion_tokens": 218,
+        "total_tokens": 1719,
+        "input_tokens": 1501,
+        "output_tokens": 218,
+        "total_tokens_alt": 1719,
+        "prompt_time": 0.102820257,
+        "completion_time": 0.290666667,
+        "total_time": 0.393486924,
+        "queue_time": 2.593553047
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.393486924,
+      "token_cost_usd": {
+        "input_cost_usd": 7.5e-05,
+        "output_cost_usd": 1.7e-05,
+        "total_cost_usd": 9.2e-05
+      }
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Intra-relationship Integrity",
+      "supported_by_problems": [
+        3,
+        8,
+        12,
+        13
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The selected dimension is Consistency, as it is well-supported by problems related to data duplication, redundancy, and invalid foreign keys. Intra-relationship Integrity is the recommended factor, as it ensures that data within a single dataset is consistent. This is supported by the context, where business rules and data filters are in place to prevent data inconsistencies. Additionally, data quality metadata and requirements emphasize the importance of data integrity. The recommended factor is not previously selected, and it is well-supported by the context, making it a suitable choice for ensuring data consistency.",
+      "tokens_used": {
+        "prompt_tokens": 1481,
+        "completion_tokens": 261,
+        "total_tokens": 1742,
+        "input_tokens": 1481,
+        "output_tokens": 261,
+        "total_tokens_alt": 1742,
+        "prompt_time": 0.127686548,
+        "completion_time": 0.348,
+        "total_time": 0.475686548,
+        "queue_time": 3.297057742
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.475686548,
+      "token_cost_usd": {
+        "input_cost_usd": 7.4e-05,
+        "output_cost_usd": 2.1e-05,
+        "total_cost_usd": 9.5e-05
+      }
+    },
+    {
+      "recommended_dimension": "Completeness",
+      "recommended_factor": "Coverage",
+      "supported_by_problems": [
+        3,
+        8,
+        13
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension is Completeness, as it is well-supported by problems such as duplicated records (problem 3) and redundant entries (problem 8), which indicate missing data. The recommended factor is Coverage, as it is supported by context components such as data filters (dataFilter 3, 4) and data quality requirements (dqReq 7), which emphasize the importance of having complete data. The selected problems and context components highlight the need for ensuring that all required data is present and accurate, making Completeness and Coverage the most relevant DQ dimension and factor.",
+      "tokens_used": {
+        "prompt_tokens": 1421,
+        "completion_tokens": 253,
+        "total_tokens": 1674,
+        "input_tokens": 1421,
+        "output_tokens": 253,
+        "total_tokens_alt": 1674,
+        "prompt_time": 0.165194235,
+        "completion_time": 0.35073763,
+        "total_time": 0.515931865,
+        "queue_time": 1.376602718
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.515931865,
+      "token_cost_usd": {
+        "input_cost_usd": 7.1e-05,
+        "output_cost_usd": 2e-05,
+        "total_cost_usd": 9.1e-05
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Semantic Accuracy",
+      "supported_by_problems": [
+        3,
+        8,
+        12,
+        13
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension is Accuracy, with the factor Semantic Accuracy being the most relevant. This is supported by problems 3 (Duplicated records), 8 (Redundant entries), 12 (Invalid foreign keys), and 13 (Missing relationships), which all relate to incorrect or inconsistent data. In the context, Semantic Accuracy is supported by the e-commerce domain, business rules requiring unique combinations and accurate ratings, data filters excluding reviews with incorrect formats, data quality metadata, and completeness metrics. The tasks of calculating sentiment scores, detecting suspicious reviews, and generating quality rankings also rely on accurate data. Finally, the user types of marketing analysts, data scientists, and academic researchers all require accurate data for their purposes.",
+      "tokens_used": {
+        "prompt_tokens": 1359,
+        "completion_tokens": 289,
+        "total_tokens": 1648,
+        "input_tokens": 1359,
+        "output_tokens": 289,
+        "total_tokens_alt": 1648,
+        "prompt_time": 0.11008492,
+        "completion_time": 0.428056761,
+        "total_time": 0.538141681,
+        "queue_time": 0.638363087
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.538141681,
+      "token_cost_usd": {
+        "input_cost_usd": 6.8e-05,
+        "output_cost_usd": 2.3e-05,
+        "total_cost_usd": 9.1e-05
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Precision",
+      "supported_by_problems": [
+        3,
+        6,
+        8,
+        11,
+        12
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The selected dimension 'Accuracy' is supported by problems related to data inconsistencies and inaccuracies, such as duplicated records, incorrect categorization, and missing timestamps. The recommended factor 'Precision' is strongly supported by the need for precise and detailed data, as seen in the business rules and data requirements. This combination is well-supported by the context, particularly in the app domain, business rules, data filters, and data quality requirements.",
+      "tokens_used": {
+        "prompt_tokens": 1341,
+        "completion_tokens": 231,
+        "total_tokens": 1572,
+        "input_tokens": 1341,
+        "output_tokens": 231,
+        "total_tokens_alt": 1572,
+        "prompt_time": 0.076668799,
+        "completion_time": 0.360618205,
+        "total_time": 0.437287004,
+        "queue_time": 2.0394397929999997
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.437287004,
+      "token_cost_usd": {
+        "input_cost_usd": 6.7e-05,
+        "output_cost_usd": 1.8e-05,
+        "total_cost_usd": 8.6e-05
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Currency",
+      "supported_by_problems": [
+        4,
+        9,
+        10,
+        14
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The Freshness dimension is recommended due to the presence of problems related to outdated data (problem 4) and missing timestamps (problem 9). The Currency factor is the most relevant within this dimension, as it directly addresses the issue of data staleness. The recommended factor is supported by context components such as data filters (problem 3 and 4), data quality metadata (problem 5), and system requirements (problem 6 and 7). The selected factor is also relevant to various user types, including marketing analysts, data scientists, and academic researchers, who require up-to-date data for their tasks and purposes.",
+      "tokens_used": {
+        "prompt_tokens": 1327,
+        "completion_tokens": 271,
+        "total_tokens": 1598,
+        "input_tokens": 1327,
+        "output_tokens": 271,
+        "total_tokens_alt": 1598,
+        "prompt_time": 0.05520678,
+        "completion_time": 0.361333333,
+        "total_time": 0.416540113,
+        "queue_time": 0.782535744
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.416540113,
+      "token_cost_usd": {
+        "input_cost_usd": 6.6e-05,
+        "output_cost_usd": 2.2e-05,
+        "total_cost_usd": 8.8e-05
+      }
+    },
+    {
+      "recommended_dimension": "Uniqueness",
+      "recommended_factor": "No-contradiction",
+      "supported_by_problems": [
+        3,
+        8,
+        13
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The Uniqueness dimension is recommended due to the presence of duplicated records, redundant entries, and missing relationships. The No-contradiction factor is particularly relevant as it ensures that there are no conflicting entries within the dataset. This is supported by the business rules that prevent multiple reviews per user and book, as well as the data quality requirements that ensure data integrity. The context also highlights the importance of uniqueness in the application domain, data filters, and user types.",
+      "tokens_used": {
+        "prompt_tokens": 1312,
+        "completion_tokens": 239,
+        "total_tokens": 1551,
+        "input_tokens": 1312,
+        "output_tokens": 239,
+        "total_tokens_alt": 1551,
+        "prompt_time": 0.099719596,
+        "completion_time": 0.318666667,
+        "total_time": 0.418386263,
+        "queue_time": 9.159049769
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.418386263,
+      "token_cost_usd": {
+        "input_cost_usd": 6.6e-05,
+        "output_cost_usd": 1.9e-05,
+        "total_cost_usd": 8.5e-05
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Syntactic Accuracy",
+      "supported_by_problems": [
+        2,
+        7,
+        15
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension is Accuracy, specifically Syntactic Accuracy, due to the presence of problems like 'Inconsistent data formats' and 'Data encoding errors'. This factor is also supported by the business rule that enforces 'Rating range validation' and the data filter that excludes 'reviews with fewer than 20 characters'. Furthermore, the data quality metadata and requirements emphasize the importance of 'Completeness and accuracy measurement' and 'Ensure data integrity'. The tasks and user types also align with the need for accurate data, particularly in 'Detecting and filtering suspicious reviews' and 'Generating quality ranking'.",
+      "tokens_used": {
+        "prompt_tokens": 1251,
+        "completion_tokens": 259,
+        "total_tokens": 1510,
+        "input_tokens": 1251,
+        "output_tokens": 259,
+        "total_tokens_alt": 1510,
+        "prompt_time": 0.058554421,
+        "completion_time": 0.345333333,
+        "total_time": 0.403887754,
+        "queue_time": 0.918016202
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.403887754,
+      "token_cost_usd": {
+        "input_cost_usd": 6.3e-05,
+        "output_cost_usd": 2.1e-05,
+        "total_cost_usd": 8.3e-05
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Timeliness",
+      "supported_by_problems": [
+        9,
+        10,
+        13,
+        14,
+        15
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The selected dimension of Freshness, specifically the factor of Timeliness, is well-supported by problems related to missing timestamps, inconsistent values across sources, and missing relationships. This dimension is also reflected in the context components, such as the appDomain, bizRule, and dataFilter, which emphasize the importance of timely data for e-commerce and customer reviews. Furthermore, the dqReq component highlights the need for fast real-time response, underscoring the significance of timeliness in ensuring data quality.",
+      "tokens_used": {
+        "prompt_tokens": 1204,
+        "completion_tokens": 249,
+        "total_tokens": 1453,
+        "input_tokens": 1204,
+        "output_tokens": 249,
+        "total_tokens_alt": 1453,
+        "prompt_time": 0.069594906,
+        "completion_time": 0.355176568,
+        "total_time": 0.424771474,
+        "queue_time": 2.9844805070000002
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.424771474,
+      "token_cost_usd": {
+        "input_cost_usd": 6e-05,
+        "output_cost_usd": 2e-05,
+        "total_cost_usd": 8e-05
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Volatility",
+      "supported_by_problems": [
+        3,
+        4,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension is 'Freshness' because it directly relates to the data quality issues of duplicated records, data out of range limits, missing timestamps, and inconsistent values across sources. The 'Volatility' factor is the most relevant factor under this dimension as it is strongly linked to the rate at which the data changes over time, which is a key aspect of data freshness. The problems and context components that support this recommendation include duplicated records, data out of range limits, missing timestamps, and inconsistent values across sources, which are all indicative of data that is not up-to-date or volatile. The business rules and data filters also support this recommendation, as they aim to prevent multiple reviews per user and book, and to ensure data integrity by requiring completeness metrics to be at least 95% for mandatory fields.",
+      "tokens_used": {
+        "prompt_tokens": 1191,
+        "completion_tokens": 330,
+        "total_tokens": 1521,
+        "input_tokens": 1191,
+        "output_tokens": 330,
+        "total_tokens_alt": 1521,
+        "prompt_time": 0.101879966,
+        "completion_time": 0.44,
+        "total_time": 0.541879966,
+        "queue_time": 1.376420848
+      },
+      "model_metadata": {
+        "model_name": "llama-3.1-8b-instant",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.541879966,
+      "token_cost_usd": {
+        "input_cost_usd": 6e-05,
+        "output_cost_usd": 2.6e-05,
+        "total_cost_usd": 8.6e-05
+      }
+    }
+  ],
+  "factor_recommendation_order": [
+    {
+      "order": 1,
+      "dimension": "Consistency",
+      "factor": "Inter-relationship Integrity",
+      "timestamp": "2025-05-19T12:05:13.496405"
+    },
+    {
+      "order": 2,
+      "dimension": "Consistency",
+      "factor": "Domain Integrity",
+      "timestamp": "2025-05-19T12:05:45.376319"
+    },
+    {
+      "order": 3,
+      "dimension": "Completeness",
+      "factor": "Density",
+      "timestamp": "2025-05-19T12:05:47.696240"
+    },
+    {
+      "order": 4,
+      "dimension": "Uniqueness",
+      "factor": "No-duplication",
+      "timestamp": "2025-05-19T12:06:01.973398"
+    },
+    {
+      "order": 5,
+      "dimension": "Consistency",
+      "factor": "Intra-relationship Integrity",
+      "timestamp": "2025-05-19T12:06:20.216757"
+    },
+    {
+      "order": 6,
+      "dimension": "Completeness",
+      "factor": "Coverage",
+      "timestamp": "2025-05-19T12:06:35.427572"
+    },
+    {
+      "order": 7,
+      "dimension": "Accuracy",
+      "factor": "Semantic Accuracy",
+      "timestamp": "2025-05-19T12:06:49.905917"
+    },
+    {
+      "order": 8,
+      "dimension": "Accuracy",
+      "factor": "Precision",
+      "timestamp": "2025-05-19T12:07:08.050820"
+    },
+    {
+      "order": 9,
+      "dimension": "Freshness",
+      "factor": "Currency",
+      "timestamp": "2025-05-19T12:07:22.972470"
+    },
+    {
+      "order": 10,
+      "dimension": "Uniqueness",
+      "factor": "No-contradiction",
+      "timestamp": "2025-05-19T12:07:45.848744"
+    },
+    {
+      "order": 11,
+      "dimension": "Accuracy",
+      "factor": "Syntactic Accuracy",
+      "timestamp": "2025-05-19T12:07:52.774369"
+    },
+    {
+      "order": 12,
+      "dimension": "Freshness",
+      "factor": "Timeliness",
+      "timestamp": "2025-05-19T12:08:09.471301"
+    },
+    {
+      "order": 13,
+      "dimension": "Freshness",
+      "factor": "Volatility",
+      "timestamp": "2025-05-19T12:08:22.712709"
+    }
+  ],
+  "factor_recommendation_order_details": {
+    "Accuracy": {
+      "Semantic Accuracy": 7,
+      "Syntactic Accuracy": 11,
+      "Precision": 8
+    },
+    "Completeness": {
+      "Density": 3,
+      "Coverage": 6
+    },
+    "Freshness": {
+      "Currency": 9,
+      "Timeliness": 12,
+      "Volatility": 13
+    },
+    "Consistency": {
+      "Domain Integrity": 2,
+      "Intra-relationship Integrity": 5,
+      "Inter-relationship Integrity": 1
+    },
+    "Uniqueness": {
+      "No-duplication": 4,
+      "No-contradiction": 10
+    }
+  },
+  "average_metrics": {
+    "executions_per_recommendation": 1.1538461538461537,
+    "tokens_per_recommendation": {
+      "prompt": 1383.923076923077,
+      "completion": 254.3846153846154,
+      "total": 1638.3076923076924
+    },
+    "time_per_recommendation": 0.45840003584615385
+  },
+  "cost_summary_usd": {
+    "input_cost_usd": 0.000901,
+    "output_cost_usd": 0.000263,
+    "total_cost_usd": 0.001164
+  }
+}

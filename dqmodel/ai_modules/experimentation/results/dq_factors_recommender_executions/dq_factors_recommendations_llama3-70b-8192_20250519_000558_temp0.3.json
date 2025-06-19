@@ -1,0 +1,606 @@
+{
+  "total_recommendations": 13,
+  "total_executions": 14,
+  "total_tokens": {
+    "prompt": 17605,
+    "completion": 1811,
+    "total": 19416,
+    "time": 6.884868613000001
+  },
+  "total_cost_usd": {
+    "input_cost_usd": 0.010386999999999999,
+    "output_cost_usd": 0.0014299999999999996,
+    "total_cost_usd": 0.011818
+  },
+  "recommendations": [
+    {
+      "recommended_dimension": "Uniqueness",
+      "recommended_factor": "No-duplication",
+      "supported_by_problems": [
+        3,
+        8
+      ],
+      "supported_by_context": {
+        "bizRule": [
+          3
+        ],
+        "task": [
+          11
+        ]
+      },
+      "rationale": "The presence of duplicated records and redundant entries indicates a lack of uniqueness, which is critical in an e-commerce platform where each review should be unique to prevent manipulation. The business rule ensuring each combination of asin and reviewerID is unique further supports this dimension.",
+      "tokens_used": {
+        "prompt_tokens": 1526,
+        "completion_tokens": 119,
+        "total_tokens": 1645,
+        "input_tokens": 1526,
+        "output_tokens": 119,
+        "total_tokens_alt": 1645,
+        "prompt_time": 0.057752489,
+        "completion_time": 0.478080604,
+        "total_time": 0.535833093,
+        "queue_time": 0.28061706799999997
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.535833093,
+      "token_cost_usd": {
+        "input_cost_usd": 0.0009,
+        "output_cost_usd": 9.4e-05,
+        "total_cost_usd": 0.000994
+      }
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Intra-relationship Integrity",
+      "supported_by_problems": [
+        2,
+        7,
+        14
+      ],
+      "supported_by_context": {
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ]
+      },
+      "rationale": "The presence of inconsistent data formats, non-standardized data, and inconsistent units, along with business rules and data filters that enforce specific formats and structures, strongly suggest the importance of maintaining intra-relationship integrity to ensure consistency within the dataset.",
+      "tokens_used": {
+        "prompt_tokens": 1506,
+        "completion_tokens": 142,
+        "total_tokens": 1648,
+        "input_tokens": 1506,
+        "output_tokens": 142,
+        "total_tokens_alt": 1648,
+        "prompt_time": 0.056865038,
+        "completion_time": 0.492094796,
+        "total_time": 0.548959834,
+        "queue_time": 0.28154307700000003
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.548959834,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000889,
+        "output_cost_usd": 0.000112,
+        "total_cost_usd": 0.001001
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Semantic Accuracy",
+      "supported_by_problems": [
+        6,
+        4
+      ],
+      "supported_by_context": {
+        "bizRule": [
+          2
+        ],
+        "dqMeta": [
+          5
+        ],
+        "task": [
+          11
+        ]
+      },
+      "rationale": "The presence of incorrect categorization and data out of range limits indicates a lack of semantic accuracy. This is further supported by the business rule validating rating ranges and the data quality metadata measuring completeness and accuracy. The task of calculating sentiment scores also relies on accurate data.",
+      "tokens_used": {
+        "prompt_tokens": 1486,
+        "completion_tokens": 125,
+        "total_tokens": 1611,
+        "input_tokens": 1486,
+        "output_tokens": 125,
+        "total_tokens_alt": 1611,
+        "prompt_time": 0.056281984,
+        "completion_time": 0.383178422,
+        "total_time": 0.439460406,
+        "queue_time": 0.279331804
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.439460406,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000877,
+        "output_cost_usd": 9.9e-05,
+        "total_cost_usd": 0.000975
+      }
+    },
+    {
+      "recommended_dimension": "Completeness",
+      "recommended_factor": "Density",
+      "supported_by_problems": [
+        1,
+        11
+      ],
+      "supported_by_context": {
+        "dqReq": [
+          7
+        ],
+        "task": [
+          11
+        ]
+      },
+      "rationale": "The presence of null values in required fields and missing timestamps suggests that the data is not fully available, impacting the completeness of the dataset. The data quality requirement of ensuring completeness metric ≥ 95% for mandatory fields and the task of calculating sentiment scores further emphasize the importance of density in ensuring data completeness.",
+      "tokens_used": {
+        "prompt_tokens": 1468,
+        "completion_tokens": 125,
+        "total_tokens": 1593,
+        "input_tokens": 1468,
+        "output_tokens": 125,
+        "total_tokens_alt": 1593,
+        "prompt_time": 0.055961717,
+        "completion_time": 0.41771646,
+        "total_time": 0.473678177,
+        "queue_time": 0.27804307
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.473678177,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000866,
+        "output_cost_usd": 9.9e-05,
+        "total_cost_usd": 0.000965
+      }
+    },
+    {
+      "recommended_dimension": "Uniqueness",
+      "recommended_factor": "No-contradiction",
+      "supported_by_problems": [
+        3,
+        8
+      ],
+      "supported_by_context": {
+        "bizRule": [
+          3
+        ],
+        "task": [
+          11
+        ]
+      },
+      "rationale": "The presence of duplicated records and redundant entries indicates a lack of uniqueness, which is critical in an e-commerce platform where each review should be unique to prevent manipulation. The business rule 'Each combination (asin, reviewerID) must be unique' further emphasizes the importance of uniqueness in this context.",
+      "tokens_used": {
+        "prompt_tokens": 1450,
+        "completion_tokens": 128,
+        "total_tokens": 1578,
+        "input_tokens": 1450,
+        "output_tokens": 128,
+        "total_tokens_alt": 1578,
+        "prompt_time": 0.055123115,
+        "completion_time": 0.458761131,
+        "total_time": 0.513884246,
+        "queue_time": 0.278567072
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.513884246,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000855,
+        "output_cost_usd": 0.000101,
+        "total_cost_usd": 0.000957
+      }
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Domain Integrity",
+      "supported_by_problems": [
+        4,
+        12,
+        14
+      ],
+      "supported_by_context": {
+        "bizRule": [
+          2,
+          3
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ]
+      },
+      "rationale": "The presence of data out of range limits, invalid foreign keys, and inconsistent units suggests a lack of conformance to defined domain rules, which is a key aspect of data consistency. This is further supported by business rules validating rating ranges and preventing multiple reviews per user and book, as well as data quality requirements ensuring completeness and accuracy.",
+      "tokens_used": {
+        "prompt_tokens": 1389,
+        "completion_tokens": 147,
+        "total_tokens": 1536,
+        "input_tokens": 1389,
+        "output_tokens": 147,
+        "total_tokens_alt": 1536,
+        "prompt_time": 0.053282782,
+        "completion_time": 0.485996039,
+        "total_time": 0.539278821,
+        "queue_time": 0.276927405
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.539278821,
+      "token_cost_usd": {
+        "input_cost_usd": 0.00082,
+        "output_cost_usd": 0.000116,
+        "total_cost_usd": 0.000936
+      }
+    },
+    {
+      "recommended_dimension": "Completeness",
+      "recommended_factor": "Coverage",
+      "supported_by_problems": [
+        1,
+        11,
+        13
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "dqReq": [
+          7
+        ],
+        "task": [
+          11
+        ]
+      },
+      "rationale": "The presence of null values in required fields, missing timestamps, and missing relationships suggests that the dataset lacks coverage, which is critical for e-commerce and customer review analysis. The data quality requirement of completeness metric ≥ 95% for mandatory fields and the task of calculating sentiment scores further emphasize the importance of complete data coverage.",
+      "tokens_used": {
+        "prompt_tokens": 1375,
+        "completion_tokens": 139,
+        "total_tokens": 1514,
+        "input_tokens": 1375,
+        "output_tokens": 139,
+        "total_tokens_alt": 1514,
+        "prompt_time": 0.044657718,
+        "completion_time": 0.521190116,
+        "total_time": 0.565847834,
+        "queue_time": 0.279857327
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.565847834,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000811,
+        "output_cost_usd": 0.00011,
+        "total_cost_usd": 0.000921
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Precision",
+      "supported_by_problems": [
+        4,
+        7,
+        14
+      ],
+      "supported_by_context": {
+        "bizRule": [
+          2
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "task": [
+          11
+        ]
+      },
+      "rationale": "The presence of out-of-range values, non-standardized data, and inconsistent units suggests a lack of adequate detail in the data, which is a key aspect of precision. The business rule validating the rating range, the completeness metric, and the data quality metadata further emphasize the importance of precision in this context.",
+      "tokens_used": {
+        "prompt_tokens": 1313,
+        "completion_tokens": 144,
+        "total_tokens": 1457,
+        "input_tokens": 1313,
+        "output_tokens": 144,
+        "total_tokens_alt": 1457,
+        "prompt_time": 0.050669848,
+        "completion_time": 0.520496899,
+        "total_time": 0.571166747,
+        "queue_time": 0.28001195
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.571166747,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000775,
+        "output_cost_usd": 0.000114,
+        "total_cost_usd": 0.000888
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Syntactic Accuracy",
+      "supported_by_problems": [
+        2,
+        7,
+        15
+      ],
+      "supported_by_context": {
+        "bizRule": [
+          2
+        ],
+        "dataFilter": [
+          4
+        ],
+        "dqReq": [
+          7
+        ]
+      },
+      "rationale": "The presence of inconsistent data formats, non-standardized data, and data encoding errors strongly suggests a lack of syntactic accuracy is further supported by the business rule requiring a specific rating range, as well as the need to filter out excessively short reviews.",
+      "tokens_used": {
+        "prompt_tokens": 1299,
+        "completion_tokens": 128,
+        "total_tokens": 1427,
+        "input_tokens": 1299,
+        "output_tokens": 128,
+        "total_tokens_alt": 1427,
+        "prompt_time": 0.050222222,
+        "completion_time": 0.429971085,
+        "total_time": 0.480193307,
+        "queue_time": 0.282685593
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.480193307,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000766,
+        "output_cost_usd": 0.000101,
+        "total_cost_usd": 0.000868
+      }
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Inter-relationship Integrity",
+      "supported_by_problems": [
+        10,
+        14
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "Inconsistent values across sources and inconsistent units indicate a lack of coherence across different sources and over time, which is a key aspect of data consistency. The app domain, business rules, and data filters suggest a need for data integration and standardization, which is further supported by the requirement for fast real-time response and data integrity. The tasks and user types also imply a need for consistent data to support various applications and analyses.",
+      "tokens_used": {
+        "prompt_tokens": 1252,
+        "completion_tokens": 209,
+        "total_tokens": 1461,
+        "input_tokens": 1252,
+        "output_tokens": 209,
+        "total_tokens_alt": 1461,
+        "prompt_time": 0.040746626,
+        "completion_time": 0.597142857,
+        "total_time": 0.637889483,
+        "queue_time": 0.283108451
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 2,
+      "total_time": 1.275778966,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000739,
+        "output_cost_usd": 0.000165,
+        "total_cost_usd": 0.000904
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Timeliness",
+      "supported_by_problems": [
+        9,
+        10
+      ],
+      "supported_by_context": {
+        "dqReq": [
+          6,
+          7
+        ],
+        "task": [
+          11,
+          12
+        ]
+      },
+      "rationale": "The absence of timestamps and inconsistent values across sources indicate that data is not available when needed, affecting the overall freshness of the data. This is further supported by the requirement for fast real-time response and ensuring data completeness, as well as tasks that rely on timely data for sentiment scores and review filtering.",
+      "tokens_used": {
+        "prompt_tokens": 1194,
+        "completion_tokens": 131,
+        "total_tokens": 1325,
+        "input_tokens": 1194,
+        "output_tokens": 131,
+        "total_tokens_alt": 1325,
+        "prompt_time": 0.038877314,
+        "completion_time": 0.448533093,
+        "total_time": 0.487410407,
+        "queue_time": 0.280312103
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.487410407,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000704,
+        "output_cost_usd": 0.000103,
+        "total_cost_usd": 0.000808
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Currency",
+      "supported_by_problems": [
+        9,
+        15
+      ],
+      "supported_by_context": {
+        "dqReq": [
+          7
+        ],
+        "task": [
+          11
+        ]
+      },
+      "rationale": "The data quality problems of missing timestamps and data encoding errors suggest that the data may not be up-to-date, which is critical in an e-commerce platform where customer reviews are constantly being added. The requirement of ensuring data integrity and completeness, as well as the task of calculating sentiment scores, further emphasize the need for current and updated data.",
+      "tokens_used": {
+        "prompt_tokens": 1181,
+        "completion_tokens": 132,
+        "total_tokens": 1313,
+        "input_tokens": 1181,
+        "output_tokens": 132,
+        "total_tokens_alt": 1313,
+        "prompt_time": 0.038560327,
+        "completion_time": 0.522413156,
+        "total_time": 0.560973483,
+        "queue_time": 0.291967289
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.560973483,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000697,
+        "output_cost_usd": 0.000104,
+        "total_cost_usd": 0.000801
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Volatility",
+      "supported_by_problems": [
+        9,
+        10
+      ],
+      "supported_by_context": {
+        "dqReq": [
+          7
+        ],
+        "task": [
+          11
+        ]
+      },
+      "rationale": "The recommended dimension 'Freshness' and factor 'Volatility' are supported by problems related to missing timestamps and inconsistent values across sources, which are critical in an e-commerce application where data freshness is essential. The context components, such as the requirement for completeness metric ≥ 95% for mandatory fields and the task of calculating sentiment scores, further emphasize the importance of data freshness and volatility.",
+      "tokens_used": {
+        "prompt_tokens": 1166,
+        "completion_tokens": 142,
+        "total_tokens": 1308,
+        "input_tokens": 1166,
+        "output_tokens": 142,
+        "total_tokens_alt": 1308,
+        "prompt_time": 0.038045872,
+        "completion_time": 0.492246903,
+        "total_time": 0.530292775,
+        "queue_time": 0.276439433
+      },
+      "model_metadata": {
+        "model_name": "llama3-70b-8192",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.530292775,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000688,
+        "output_cost_usd": 0.000112,
+        "total_cost_usd": 0.0008
+      }
+    }
+  ],
+  "average_metrics": {
+    "executions_per_recommendation": 1.0769230769230769,
+    "tokens_per_recommendation": {
+      "prompt": 1354.2307692307693,
+      "completion": 139.30769230769232,
+      "total": 1493.5384615384614
+    },
+    "time_per_recommendation": 0.529605277923077
+  },
+  "cost_summary_usd": {
+    "input_cost_usd": 0.010387,
+    "output_cost_usd": 0.00143,
+    "total_cost_usd": 0.011818
+  }
+}

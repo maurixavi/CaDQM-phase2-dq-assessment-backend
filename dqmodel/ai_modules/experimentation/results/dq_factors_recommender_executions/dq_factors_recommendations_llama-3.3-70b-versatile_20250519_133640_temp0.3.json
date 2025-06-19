@@ -1,0 +1,1000 @@
+{
+  "total_recommendations": 13,
+  "total_executions": 13,
+  "total_tokens": {
+    "prompt": 17896,
+    "completion": 3281,
+    "total": 21177,
+    "time": 13.955043279
+  },
+  "total_cost_usd": {
+    "input_cost_usd": 0.010559,
+    "output_cost_usd": 0.0025919999999999997,
+    "total_cost_usd": 0.013152000000000002
+  },
+  "recommendations": [
+    {
+      "recommended_dimension": "Completeness",
+      "recommended_factor": "Density",
+      "supported_by_problems": [
+        1,
+        11
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The presence of null values in required fields and missing timestamps indicates a lack of completeness in the data. The application domain of e-commerce and customer reviews, along with business rules such as rating range validation and preventing multiple reviews per user and book, further emphasize the importance of complete data. The data filters and quality requirements also suggest that completeness is crucial for tasks such as calculating sentiment scores and detecting suspicious reviews. Therefore, the density factor, which measures the proportion of actual data entries compared to the total possible entries, is the most relevant factor for ensuring data quality in this context.",
+      "tokens_used": {
+        "prompt_tokens": 1551,
+        "completion_tokens": 257,
+        "total_tokens": 1808,
+        "input_tokens": 1551,
+        "output_tokens": 257,
+        "total_tokens_alt": 1808,
+        "prompt_time": 0.107775124,
+        "completion_time": 0.971387837,
+        "total_time": 1.079162961,
+        "queue_time": 0.277930436
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.079162961,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000915,
+        "output_cost_usd": 0.000203,
+        "total_cost_usd": 0.001118
+      }
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Intra-relationship Integrity",
+      "supported_by_problems": [
+        2,
+        5,
+        10
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are driven by the need for coherent data across different sources and over time. Inconsistent data formats, unresolved data conflicts, and inconsistent values across sources all point to issues with intra-relationship integrity. The application domain of e-commerce and customer reviews, combined with business rules like rating range validation and preventing multiple reviews per user and book, further emphasize the importance of maintaining consistency within the dataset. Data filters and quality requirements also highlight the need for reliable and consistent data, which is essential for tasks like calculating sentiment scores, detecting suspicious reviews, and generating quality rankings.",
+      "tokens_used": {
+        "prompt_tokens": 1533,
+        "completion_tokens": 269,
+        "total_tokens": 1802,
+        "input_tokens": 1533,
+        "output_tokens": 269,
+        "total_tokens_alt": 1802,
+        "prompt_time": 0.121229496,
+        "completion_time": 0.978181818,
+        "total_time": 1.099411314,
+        "queue_time": 0.27876718300000003
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.099411314,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000904,
+        "output_cost_usd": 0.000213,
+        "total_cost_usd": 0.001117
+      }
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Inter-relationship Integrity",
+      "supported_by_problems": [
+        2,
+        5,
+        10
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are driven by the need for coherence across different sources and over time, as evidenced by problems such as inconsistent data formats, unresolved data conflicts, and inconsistent values across sources. The system context, including the app domain of e-commerce and customer reviews, business rules for rating range validation and preventing multiple reviews per user and book, and data quality requirements for completeness and latency, all support the importance of inter-relationship integrity for ensuring data reliability and trustworthiness.",
+      "tokens_used": {
+        "prompt_tokens": 1513,
+        "completion_tokens": 248,
+        "total_tokens": 1761,
+        "input_tokens": 1513,
+        "output_tokens": 248,
+        "total_tokens_alt": 1761,
+        "prompt_time": 0.119160386,
+        "completion_time": 0.901818182,
+        "total_time": 1.020978568,
+        "queue_time": 0.279536353
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.020978568,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000893,
+        "output_cost_usd": 0.000196,
+        "total_cost_usd": 0.001089
+      }
+    },
+    {
+      "recommended_dimension": "Completeness",
+      "recommended_factor": "Coverage",
+      "supported_by_problems": [
+        1,
+        11,
+        13
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are driven by the presence of null values in required fields, missing timestamps, and missing relationships, which all point to gaps in the data. The application domain of e-commerce and customer reviews, along with business rules preventing multiple reviews per user and book, and data filters excluding short reviews, further emphasize the need for complete data coverage. The requirement for high completeness metrics for mandatory fields and the goal of computing sentiment scores and detecting suspicious reviews also support the importance of comprehensive data coverage.",
+      "tokens_used": {
+        "prompt_tokens": 1495,
+        "completion_tokens": 243,
+        "total_tokens": 1738,
+        "input_tokens": 1495,
+        "output_tokens": 243,
+        "total_tokens_alt": 1738,
+        "prompt_time": 0.146242598,
+        "completion_time": 0.883636364,
+        "total_time": 1.029878962,
+        "queue_time": 0.279038869
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.029878962,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000882,
+        "output_cost_usd": 0.000192,
+        "total_cost_usd": 0.001074
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Semantic Accuracy",
+      "supported_by_problems": [
+        6,
+        12
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are driven by the need for correct and precise data representation in the e-commerce domain, particularly for customer reviews on Amazon. Incorrect categorization and invalid foreign keys indicate issues with semantic accuracy, which is crucial for training recommendation models, analyzing linguistic bias, and monitoring reputation. The business rules and data filters in place, such as rating range validation and unique review combinations, also emphasize the importance of semantic accuracy. Furthermore, the requirement for high completeness metrics and fast real-time response underscores the need for accurate data representation.",
+      "tokens_used": {
+        "prompt_tokens": 1433,
+        "completion_tokens": 249,
+        "total_tokens": 1682,
+        "input_tokens": 1433,
+        "output_tokens": 249,
+        "total_tokens_alt": 1682,
+        "prompt_time": 0.099851402,
+        "completion_time": 0.905454545,
+        "total_time": 1.005305947,
+        "queue_time": 0.276755345
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.005305947,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000845,
+        "output_cost_usd": 0.000197,
+        "total_cost_usd": 0.001042
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Precision",
+      "supported_by_problems": [
+        6,
+        14
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are driven by the need for precise data, as indicated by problems such as incorrect categorization and inconsistent units. The e-commerce application domain, which involves customer reviews and ratings, also necessitates precise data to ensure accurate analysis and decision-making. Furthermore, business rules like rating range validation and data filters like removing excessively short reviews underscore the importance of precise data. The data quality requirements, such as ensuring completeness and accuracy, also support the need for precise data. Overall, precise data is crucial for maintaining data integrity and supporting various tasks and user types, including marketing analysts, data scientists, and academic researchers.",
+      "tokens_used": {
+        "prompt_tokens": 1415,
+        "completion_tokens": 267,
+        "total_tokens": 1682,
+        "input_tokens": 1415,
+        "output_tokens": 267,
+        "total_tokens_alt": 1682,
+        "prompt_time": 0.09887545,
+        "completion_time": 0.970909091,
+        "total_time": 1.069784541,
+        "queue_time": 0.278005737
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.069784541,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000835,
+        "output_cost_usd": 0.000211,
+        "total_cost_usd": 0.001046
+      }
+    },
+    {
+      "recommended_dimension": "Consistency",
+      "recommended_factor": "Domain Integrity",
+      "supported_by_problems": [
+        4,
+        14
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are driven by the need for data to conform to defined domain rules, ensuring consistency across different sources and over time. This is evident in problems such as data out of range limits and inconsistent units, which can be addressed by enforcing domain integrity. The system context, including business rules like rating range validation and preventing multiple reviews per user and book, also supports the importance of domain integrity. Furthermore, the data quality requirements, such as ensuring data integrity and completeness, and the tasks of calculating sentiment scores and detecting suspicious reviews, all rely on consistent and reliable data, which is achieved through domain integrity.",
+      "tokens_used": {
+        "prompt_tokens": 1401,
+        "completion_tokens": 267,
+        "total_tokens": 1668,
+        "input_tokens": 1401,
+        "output_tokens": 267,
+        "total_tokens_alt": 1668,
+        "prompt_time": 0.104763046,
+        "completion_time": 0.970909091,
+        "total_time": 1.075672137,
+        "queue_time": 0.278878061
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.075672137,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000827,
+        "output_cost_usd": 0.000211,
+        "total_cost_usd": 0.001038
+      }
+    },
+    {
+      "recommended_dimension": "Uniqueness",
+      "recommended_factor": "No-duplication",
+      "supported_by_problems": [
+        3,
+        8
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The presence of duplicated records and redundant entries in the data quality problems suggests a need for ensuring uniqueness in the dataset. The business rule that each combination of asin and reviewerID must be unique further supports this recommendation. The data filter that includes only English reviews published since 2018 and excludes reviews with fewer than 20 characters also implies a need for unique and relevant data. The task of detecting and filtering suspicious reviews and the requirement for completeness metric ≥ 95% for mandatory fields also highlight the importance of uniqueness in the dataset.",
+      "tokens_used": {
+        "prompt_tokens": 1347,
+        "completion_tokens": 247,
+        "total_tokens": 1594,
+        "input_tokens": 1347,
+        "output_tokens": 247,
+        "total_tokens_alt": 1594,
+        "prompt_time": 0.095028626,
+        "completion_time": 0.898181818,
+        "total_time": 0.993210444,
+        "queue_time": 0.293014454
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.993210444,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000795,
+        "output_cost_usd": 0.000195,
+        "total_cost_usd": 0.00099
+      }
+    },
+    {
+      "recommended_dimension": "Uniqueness",
+      "recommended_factor": "No-contradiction",
+      "supported_by_problems": [
+        3,
+        8,
+        5
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The presence of duplicated records and unresolved data conflicts in the data quality problems, combined with the business rule that each combination of asin and reviewerID must be unique, highlights the importance of uniqueness in the dataset. The data filter that includes only English reviews published since 2018 and excludes reviews with fewer than 20 characters also supports the need for uniqueness. Furthermore, the task of detecting and filtering suspicious reviews and generating quality ranking requires unique and consistent data. Therefore, the recommended dimension is Uniqueness and the recommended factor is No-contradiction, which ensures that there are no conflicting entries within the dataset.",
+      "tokens_used": {
+        "prompt_tokens": 1327,
+        "completion_tokens": 268,
+        "total_tokens": 1595,
+        "input_tokens": 1327,
+        "output_tokens": 268,
+        "total_tokens_alt": 1595,
+        "prompt_time": 0.092851834,
+        "completion_time": 0.974545455,
+        "total_time": 1.067397289,
+        "queue_time": 0.281539357
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.067397289,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000783,
+        "output_cost_usd": 0.000212,
+        "total_cost_usd": 0.000995
+      }
+    },
+    {
+      "recommended_dimension": "Accuracy",
+      "recommended_factor": "Syntactic Accuracy",
+      "supported_by_problems": [
+        2,
+        14,
+        15
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The presence of inconsistent data formats, non-standardized data, and data encoding errors strongly suggests issues with syntactic accuracy, which is critical for ensuring data correctness and precision. The application domain of e-commerce and customer reviews, along with business rules and data filters that enforce specific formats and standards, further emphasizes the importance of syntactic accuracy. The tasks of calculating sentiment scores, detecting suspicious reviews, and generating quality rankings also rely on accurate and consistent data, making syntactic accuracy a vital factor in this context.",
+      "tokens_used": {
+        "prompt_tokens": 1266,
+        "completion_tokens": 252,
+        "total_tokens": 1518,
+        "input_tokens": 1266,
+        "output_tokens": 252,
+        "total_tokens_alt": 1518,
+        "prompt_time": 0.297045832,
+        "completion_time": 0.916363636,
+        "total_time": 1.213409468,
+        "queue_time": 0.218918716
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.213409468,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000747,
+        "output_cost_usd": 0.000199,
+        "total_cost_usd": 0.000946
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Timeliness",
+      "supported_by_problems": [
+        9,
+        15
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are well-supported by the presence of missing timestamps and data encoding errors, which indicate issues with data availability and accessibility when needed. The system context also highlights the importance of real-time response and data integrity, with requirements for low latency and high completeness metrics, further emphasizing the need for timely data. Additionally, the application domain of e-commerce and customer reviews on Amazon, where data is constantly being generated and updated, underscores the importance of having up-to-date and readily available data to support business decisions and operations.",
+      "tokens_used": {
+        "prompt_tokens": 1219,
+        "completion_tokens": 252,
+        "total_tokens": 1471,
+        "input_tokens": 1219,
+        "output_tokens": 252,
+        "total_tokens_alt": 1471,
+        "prompt_time": 0.160267114,
+        "completion_time": 0.916363636,
+        "total_time": 1.07663075,
+        "queue_time": 0.22472580800000003
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.07663075,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000719,
+        "output_cost_usd": 0.000199,
+        "total_cost_usd": 0.000918
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Volatility",
+      "supported_by_problems": [
+        9,
+        15
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are driven by the need for up-to-date and consistent data, as indicated by missing timestamps and data encoding errors. The e-commerce domain and data filters emphasizing recent English reviews also suggest a focus on volatility, as data freshness is crucial for timely analysis and decision-making. Furthermore, the presence of business rules and data quality requirements underscores the importance of managing data changes over time to ensure accuracy and reliability.",
+      "tokens_used": {
+        "prompt_tokens": 1206,
+        "completion_tokens": 231,
+        "total_tokens": 1437,
+        "input_tokens": 1206,
+        "output_tokens": 231,
+        "total_tokens_alt": 1437,
+        "prompt_time": 0.084952609,
+        "completion_time": 0.84,
+        "total_time": 0.924952609,
+        "queue_time": 0.22812291
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 0.924952609,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000712,
+        "output_cost_usd": 0.000182,
+        "total_cost_usd": 0.000894
+      }
+    },
+    {
+      "recommended_dimension": "Freshness",
+      "recommended_factor": "Currency",
+      "supported_by_problems": [
+        9,
+        15
+      ],
+      "supported_by_context": {
+        "appDomain": [
+          1
+        ],
+        "bizRule": [
+          2,
+          3
+        ],
+        "dataFilter": [
+          3,
+          4
+        ],
+        "dqMeta": [
+          5
+        ],
+        "dqReq": [
+          6,
+          7
+        ],
+        "otherData": [],
+        "otherMeta": [
+          8
+        ],
+        "sysReq": [],
+        "task": [
+          11,
+          12,
+          13
+        ],
+        "userType": [
+          12,
+          13,
+          14
+        ]
+      },
+      "rationale": "The recommended dimension and factor are driven by the presence of missing timestamps and data encoding errors, which suggest that data freshness and currency are compromised. The application domain of e-commerce and customer reviews, combined with business rules and data filters that emphasize recency and uniqueness, further support the importance of currency. The requirement for low latency and high completeness metrics also implies that up-to-date data is essential for real-time queries and data integrity.",
+      "tokens_used": {
+        "prompt_tokens": 1190,
+        "completion_tokens": 231,
+        "total_tokens": 1421,
+        "input_tokens": 1190,
+        "output_tokens": 231,
+        "total_tokens_alt": 1421,
+        "prompt_time": 0.084065309,
+        "completion_time": 1.21518298,
+        "total_time": 1.299248289,
+        "queue_time": 0.22324103799999997
+      },
+      "model_metadata": {
+        "model_name": "llama-3.3-70b-versatile",
+        "finish_reason": "stop"
+      },
+      "executions_needed": 1,
+      "total_time": 1.299248289,
+      "token_cost_usd": {
+        "input_cost_usd": 0.000702,
+        "output_cost_usd": 0.000182,
+        "total_cost_usd": 0.000885
+      }
+    }
+  ],
+  "factor_recommendation_order": [
+    {
+      "order": 1,
+      "dimension": "Completeness",
+      "factor": "Density",
+      "timestamp": "2025-05-19T13:35:20.649681"
+    },
+    {
+      "order": 2,
+      "dimension": "Consistency",
+      "factor": "Intra-relationship Integrity",
+      "timestamp": "2025-05-19T13:35:29.356935"
+    },
+    {
+      "order": 3,
+      "dimension": "Consistency",
+      "factor": "Inter-relationship Integrity",
+      "timestamp": "2025-05-19T13:35:38.921501"
+    },
+    {
+      "order": 4,
+      "dimension": "Completeness",
+      "factor": "Coverage",
+      "timestamp": "2025-05-19T13:35:47.494511"
+    },
+    {
+      "order": 5,
+      "dimension": "Accuracy",
+      "factor": "Semantic Accuracy",
+      "timestamp": "2025-05-19T13:35:55.130662"
+    },
+    {
+      "order": 6,
+      "dimension": "Accuracy",
+      "factor": "Precision",
+      "timestamp": "2025-05-19T13:36:03.820904"
+    },
+    {
+      "order": 7,
+      "dimension": "Consistency",
+      "factor": "Domain Integrity",
+      "timestamp": "2025-05-19T13:36:12.510366"
+    },
+    {
+      "order": 8,
+      "dimension": "Uniqueness",
+      "factor": "No-duplication",
+      "timestamp": "2025-05-19T13:36:20.124983"
+    },
+    {
+      "order": 9,
+      "dimension": "Uniqueness",
+      "factor": "No-contradiction",
+      "timestamp": "2025-05-19T13:36:27.767131"
+    },
+    {
+      "order": 10,
+      "dimension": "Accuracy",
+      "factor": "Syntactic Accuracy",
+      "timestamp": "2025-05-19T13:36:35.643829"
+    },
+    {
+      "order": 11,
+      "dimension": "Freshness",
+      "factor": "Timeliness",
+      "timestamp": "2025-05-19T13:36:37.578513"
+    },
+    {
+      "order": 12,
+      "dimension": "Freshness",
+      "factor": "Volatility",
+      "timestamp": "2025-05-19T13:36:38.973010"
+    },
+    {
+      "order": 13,
+      "dimension": "Freshness",
+      "factor": "Currency",
+      "timestamp": "2025-05-19T13:36:40.731482"
+    }
+  ],
+  "factor_recommendation_order_details": {
+    "Accuracy": {
+      "Semantic Accuracy": 5,
+      "Syntactic Accuracy": 10,
+      "Precision": 6
+    },
+    "Completeness": {
+      "Density": 1,
+      "Coverage": 4
+    },
+    "Freshness": {
+      "Currency": 13,
+      "Timeliness": 11,
+      "Volatility": 12
+    },
+    "Consistency": {
+      "Domain Integrity": 7,
+      "Intra-relationship Integrity": 2,
+      "Inter-relationship Integrity": 3
+    },
+    "Uniqueness": {
+      "No-duplication": 8,
+      "No-contradiction": 9
+    }
+  },
+  "average_metrics": {
+    "executions_per_recommendation": 1.0,
+    "tokens_per_recommendation": {
+      "prompt": 1376.6153846153845,
+      "completion": 252.3846153846154,
+      "total": 1629.0
+    },
+    "time_per_recommendation": 1.0734648676153846
+  },
+  "cost_summary_usd": {
+    "input_cost_usd": 0.010559,
+    "output_cost_usd": 0.002592,
+    "total_cost_usd": 0.013152
+  }
+}
