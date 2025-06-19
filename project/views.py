@@ -69,6 +69,37 @@ class ProjectViewSet(viewsets.ModelViewSet):
             "message": f"Stage {stage_code} actualizado",
             "new_status": new_status
         })
+    
+    # Método para obtener proyectos por dqmodel_version
+    @action(detail=False, methods=['get'], url_path='by-dqmodel')
+    def get_by_dqmodel(self, request):
+        dqmodel_version_id = request.query_params.get('dqmodel_version')
+
+        if not dqmodel_version_id:
+            return Response(
+                {"error": "Se requiere el parámetro 'dqmodel_version'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            dqmodel_version_id = int(dqmodel_version_id)
+        except ValueError:
+            return Response(
+                {"error": "'dqmodel_version' debe ser un número entero"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        project = Project.objects.filter(dqmodel_version_id=dqmodel_version_id).first()
+
+        if not project:
+            return Response(
+                {"error": "No se encontró un proyecto con ese dqmodel_version"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = self.get_serializer(project)
+        return Response(serializer.data)
+
 
 
 # ==============================================
