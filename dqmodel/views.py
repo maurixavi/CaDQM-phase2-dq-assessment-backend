@@ -239,15 +239,6 @@ class DQMethodBaseViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(methods, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    #@action(detail=True, methods=['get'], url_path='methods-base')
-    #def get_methods_by_metric(self, request, pk=None, dim_id=None, factor_id=None):
-        # Filtrar factores basados en el dimension_id
-    #    methods = self.queryset.filter(implements_id=pk)
-    #    if methods.exists():
-    #        serializer = self.get_serializer(methods, many=True)
-    #        return Response(serializer.data)
-    #    return Response({"detail": "No methods found for this metric"}, status=status.HTTP_404_NOT_FOUND)
-
 
 
 # ViewSet para DQModel
@@ -282,6 +273,19 @@ class DQModelViewSet(viewsets.ModelViewSet):
         # Serializar y devolver la nueva version
         serializer = self.get_serializer(new_instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['get'], url_path='next-version')
+    def get_next_version(self, request, pk=None):
+        dq_model = self.get_object()
+        
+        # Buscar el modelo que tenga como previous_version este dq_model
+        next_version = DQModel.objects.filter(previous_version=dq_model).first()
+
+        if next_version:
+            serializer = self.get_serializer(next_version)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"detail": "No next version found for this DQModel"}, status=status.HTTP_404_NOT_FOUND)
     
     # DQ Dimensions en un DQModel especifico
     @action(detail=True, methods=['get'], url_path='dimensions')
@@ -559,6 +563,7 @@ class DQModelViewSet(viewsets.ModelViewSet):
                 rows = ExecutionColumnResult.objects.using('metadata_db').filter(execution_result=result)
             elif result.result_type == 'multiple':
                 #rows = ExecutionRowResult.objects.filter(execution_result=result)
+                
                 rows = ExecutionRowResult.objects.using('metadata_db').filter(execution_result=result)
             else:
                 return Response({"status": "error", "message": f"Tipo de resultado '{result.result_type}' no soportado"}, status=400)
@@ -1877,8 +1882,7 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
                 "message": f"Error al obtener resultados por columna: {str(e)}"
             }, status=500)
 
-   
-            
+      
     @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/latest-results')
     def get_latest_results(self, request, dq_model_id=None):
         # 1. Obtener ejecución
@@ -2101,122 +2105,6 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-    @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/execution-results/(?P<execution_id>[\w-]+)')
-    def get_dq_model_execution_results(self, request, dq_model_id=None, execution_id=None):
-        """
-        Obtiene los resultados de todas las ejecuciones para un modelo de calidad de datos específico.
-        """
-        # 1. Obtener ejecución del modelo
-        execution = DQModelExecution.objects.using('metadata_db').filter(
-            dq_model_id=dq_model_id,
-            execution_id=execution_id
-        ).first()
-
-        if not execution:
-            return Response({"error": "Ejecución no encontrada para este modelo"}, status=status.HTTP_404_NOT_FOUND)
-
-        # 2. Obtener métodos aplicados desde default
-        methods = list(MeasurementDQMethod.objects.using('default').filter(
-            associatedTo__metric__factor__dq_model_id=dq_model_id
-        )) + list(AggregationDQMethod.objects.using('default').filter(
-            associatedTo__metric__factor__dq_model_id=dq_model_id
-        ))
-
-        # 3. Obtener IDs de content_types desde default
-        measurement_ct = ContentType.objects.db_manager('default').get_for_model(MeasurementDQMethod)
-        aggregation_ct = ContentType.objects.db_manager('default').get_for_model(AggregationDQMethod)
-
-        # 4. Buscar resultados usando RAW SQL para evitar problemas de content_types
-        with connections['metadata_db'].cursor() as cursor:
-            cursor.execute("""
-                SELECT id, object_id, dq_value, details, content_type_id, assessment_thresholds, assessment_score, is_passing, assessed_at
-                FROM dq_method_execution_result
-                WHERE execution_id = %s
-                AND content_type_id IN (%s, %s)
-            """, [str(execution_id), measurement_ct.id, aggregation_ct.id])
-
-            raw_results = cursor.fetchall()
-
-        # 5. Mapear resultados
-        results_map = {}
-        for row in raw_results:
-            result_id, object_id, dq_value, details, content_type_id, assessment_thresholds, assessment_score, is_passing, assessed_at = row
-            thresholds = json.loads(assessment_thresholds) if assessment_thresholds else []
-            results_map[(content_type_id, object_id)] = {
-                'result_id': result_id,
-                'dq_value': dq_value,
-                'details': details,
-                'assessment_details': {
-                    'thresholds': thresholds,
-                    'score': assessment_score,
-                    'is_passing': is_passing,
-                    'assessed_at': assessed_at.isoformat() if assessed_at else None
-                }
-            }
-
-        # 6. Construir la respuesta con los resultados de ejecución
-        formatted = []
-        completed_count = 0
-        thresholds_count = 0  # Contador de los resultados con thresholds definidos
-        for method in methods:
-            content_type_id = measurement_ct.id if isinstance(method, MeasurementDQMethod) else aggregation_ct.id
-            key = (content_type_id, method.id)
-
-            if key in results_map:
-                result = results_map[key]
-                has_thresholds = len(result['assessment_details']['thresholds']) > 0
-                if has_thresholds:
-                    thresholds_count += 1  # Incrementamos el contador de resultados con thresholds
-
-                formatted.append({
-                    'execution_result_id': result['result_id'],
-                    'method_id': method.id,
-                    'method_name': method.name,
-                    'method_type': method.__class__.__name__,
-                    'status': 'completed',
-                    'dq_value': result['dq_value'],
-                    'details': result['details'],
-                    'assessment_details': result['assessment_details'],
-                    'has_thresholds': has_thresholds  # Agregar el atributo 'has_thresholds'
-                })
-                completed_count += 1
-            else:
-                formatted.append({
-                    'method_id': method.id,
-                    'method_name': method.name,
-                    'method_type': method.__class__.__name__,
-                    'status': 'pending',
-                    'has_thresholds': False  # No tiene thresholds
-                })
-
-        # 7. Crear la información de progreso de ejecución
-        execution_progress = {
-            'methods_completed': completed_count,
-            'methods_pending': len(formatted) - completed_count,
-            'methods_total': len(formatted)
-        }
-
-        # 8. Crear la información de progreso de definición de thresholds
-        thresholds_definition_progress = {
-            'thresholds_definition_completed': thresholds_count,  # Métodos con thresholds definidos
-            'thresholds_definition_pending': len(formatted) - thresholds_count,  # Métodos sin thresholds definidos
-            'thresholds_definition_total': len(formatted)  # Total de métodos
-        }
-
-        # 9. Construir la respuesta final
-        execution_status = execution.status
-        started_at = execution.started_at.isoformat() if execution.started_at else None
-        completed_at = execution.completed_at.isoformat() if execution.completed_at else None
-
-        return Response({
-            'execution_id': str(execution_id),
-            'execution_status': execution_status,
-            'started_at': started_at,
-            'completed_at': completed_at,
-            'dqmodel_execution_progress': execution_progress,
-            'thresholds_definition_progress': thresholds_definition_progress,
-            'results': sorted(formatted, key=lambda x: x['status'])
-        })
 
 
 
