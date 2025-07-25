@@ -28,9 +28,10 @@ from .models import (
     ExecutionRowResult,
     ExecutionTableResult,
     MeasurementDQMethod,
-    AggregationDQMethod,
-    PrioritizedDqProblem,
-    PrioritizedDqProblem
+    AggregationDQMethod
+    #,
+    #PrioritizedDqProblem,
+    #PrioritizedDqProblem
 )
 from .serializer import (
     ColumnResultSerializer,
@@ -45,7 +46,7 @@ from .serializer import (
     DQModelFactorSerializer,
     DQModelMetricSerializer,
     DQModelMethodSerializer,
-    PrioritizedDqProblemSerializer,
+    #PrioritizedDqProblemSerializer,
     RowResultSerializer,
     TableResultSerializer
 )
@@ -895,7 +896,7 @@ class DQModelViewSet(viewsets.ModelViewSet):
                 raw_config = request.data.get("connection_config", {})
 
                 # Verifica que request tenga las claves necesarias
-                if not all(k in raw_config for k in ['dbname', 'user', 'password', 'host', 'port']):
+                if not all(k in raw_config for k in ['name', 'user_db', 'pass_db', 'url_db', 'port']):
                     return Response(
                         {"error": "Faltan datos de conexión en connection_config"},
                         status=status.HTTP_400_BAD_REQUEST
@@ -904,7 +905,7 @@ class DQModelViewSet(viewsets.ModelViewSet):
                 # Obtiene solo lo necesario para psycopg2
                 conn_config = {
                     key: raw_config[key]
-                    for key in ["dbname", "user", "password", "host", "port"]
+                    for key in ["name", "user_db", "pass_db", "url_db", "port"]
                     if key in raw_config
                 }
 
@@ -1181,29 +1182,29 @@ class DQModelMethodViewSet(viewsets.ModelViewSet):
 
 
 # ViewSet para PrioritizedDqProblem
-class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
+#class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
     #queryset = PrioritizedDqProblem.objects.all()
-    serializer_class = PrioritizedDqProblemSerializer
+   # serializer_class = PrioritizedDqProblemSerializer
     
-    def get_queryset(self):
-        dq_model_id = self.kwargs.get('dq_model_id')
-        return PrioritizedDqProblem.objects.filter(dq_model_id=dq_model_id).order_by('priority')
+   # def get_queryset(self):
+    #    dq_model_id = self.kwargs.get('dq_model_id')
+    #    return PrioritizedDqProblem.objects.filter(dq_model_id=dq_model_id).order_by('priority')
 
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
+   # def update(self, request, *args, **kwargs):
+    #    instance = self.get_object()
         
         # Validar que no se modifique dq_model_id
-        dq_model_id = request.data.get('dq_model')
-        if dq_model_id and int(dq_model_id) != instance.dq_model.id:
-            raise ValidationError({"dq_model": "No se permite cambiar el dqmodel de un problema priorizado existente."})
+   #     dq_model_id = request.data.get('dq_model')
+  #      if dq_model_id and int(dq_model_id) != instance.dq_model.id:
+  #          raise ValidationError({"dq_model": "No se permite cambiar el dqmodel de un problema priorizado existente."})
         
         # Validar que no se modifique description
-        description = request.data.get('description')
-        if description and description != instance.description:
-            raise ValidationError({"description": "No se permite modificar la descripción."})
+  #      description = request.data.get('description')
+  #      if description and description != instance.description:
+  #          raise ValidationError({"description": "No se permite modificar la descripción."})
             
 
-        return super().update(request, *args, **kwargs)
+ #       return super().update(request, *args, **kwargs)
     
     
     

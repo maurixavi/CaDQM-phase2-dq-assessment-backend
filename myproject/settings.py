@@ -44,10 +44,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'coreapi',
     'dataqualitymodel',
-    'contextmodel',
     'project',
     'dqmodel',
-    'metadata',
+    #'metadata',
+    'contextmodel',
     'django_extensions'
 ]
 
@@ -91,7 +91,8 @@ DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'cadqm_db',
+        'NAME': 'cadqmFase1',
+        #'NAME': 'cadqm_restore', 
         "USER": "postgres",
         "PASSWORD": "password",
         "HOST": "localhost",
@@ -115,6 +116,8 @@ DATABASES = {
     #}
 }
 
+
+AUTH_USER_MODEL = 'project.User' 
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators

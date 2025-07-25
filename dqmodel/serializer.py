@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import DQMethodExecutionResult, DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod, PrioritizedDqProblem
+from .models import DQMethodExecutionResult, DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod
+#, PrioritizedDqProblem
 
 from rest_framework import serializers
 from .models import ExecutionTableResult, ExecutionColumnResult, ExecutionRowResult, DQModelExecution
@@ -65,10 +66,10 @@ class RowResultSerializer(serializers.ModelSerializer):
         ]
         
 
-class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PrioritizedDqProblem
-        fields = '__all__'  
+#class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
+#    class Meta:
+#        model = PrioritizedDqProblem
+#        fields = '__all__'  
     
 
 

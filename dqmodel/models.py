@@ -5,17 +5,22 @@ from django.core.exceptions import ValidationError
 from django.db.models import JSONField  # Django 3.1 y versiones posteriores
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-    
+
+
+# ---------------------------------------------------------------
+# Modelo DQModel
+# ---------------------------------------------------------------
+
 class DQModel(models.Model):
+    
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('finished', 'Finished'),
     ]
+    
     name = models.CharField(max_length=100) 
     version = models.CharField(max_length=20, blank=True, null=True)  
-    
     created_at = models.DateTimeField(auto_now_add=True)
-    
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
@@ -23,7 +28,7 @@ class DQModel(models.Model):
     )
     finished_at = models.DateTimeField(null=True, blank=True, editable=False) 
 
-    # Relación de versiones anteriores y siguientes
+    # Relación de versiones
     previous_version = models.ForeignKey(
         'self',
         null=True,
@@ -35,9 +40,8 @@ class DQModel(models.Model):
     def __str__(self):
         return self.name
 
-    #evitar que se cambie el estado de un DQModel ya finalizado.
     def save(self, *args, **kwargs):
-        # Si el campo previous_version es null y version no tiene valor, asignar '1.0.0' como valor por defecto
+        # Asignar versión 1.0.0 por defecto si es la primera versión
         if self.previous_version is None and not self.version:
             self.version = "1.0.0"
             
@@ -48,24 +52,31 @@ class DQModel(models.Model):
         else:
             previous_status = None
 
-        # Si el estado cambia de 'draft' a 'finished' y finished_at no está asignado
+        # Actualizar finished_at si el estado cambia de 'draft' a 'finished'
         if previous_status == 'draft' and self.status == 'finished' and not self.finished_at:
             self.finished_at = timezone.now()
 
         super().save(*args, **kwargs)
 
     def clean(self):
-        # Validación para asegurar que no se puede modificar un DQModel finalizado
+        # Validación: no se puede modificar un DQModel finalizado
         if self.pk:
             existing = DQModel.objects.get(pk=self.pk)
             if existing.status == 'finished' and self.status != 'finished':
                 raise ValidationError("No se puede cambiar el estado de un DQModel finalizado.")
 
 
-# DIMENSIONS, FACTORS, METRICS and METHODS preset
+# ---------------------------------------------------------------
+# Modelos Base para Dimensiones, Factores, Métricas y Métodos
+# ---------------------------------------------------------------
+
 class DQDimensionBase(models.Model):
+    """
+    Modelo base para dimensiones de calidad de datos.
+    """
     name = models.CharField(max_length=100, unique=True) 
     semantic = models.TextField() 
+    
     is_disabled = models.BooleanField(default=False)
 
     def __str__(self):
@@ -73,10 +84,16 @@ class DQDimensionBase(models.Model):
 
 
 class DQFactorBase(models.Model):
-    name = models.CharField(max_length=100, unique=True)  # Ej. "Completeness"
-    semantic = models.TextField()  # Descripción general del factor.
+    """
+    Modelo base para factores de calidad de datos.
+    Representa características específicas dentro de una dimensión.
+    """
+    name = models.CharField(max_length=100, unique=True)
+    semantic = models.TextField() 
+    
     is_disabled = models.BooleanField(default=False)
 
+    # Relación con dimension
     facetOf = models.ForeignKey(DQDimensionBase, on_delete=models.CASCADE, related_name='factors', null=True, blank=True)
 
     def __str__(self):
@@ -84,6 +101,10 @@ class DQFactorBase(models.Model):
 
 
 class DQMetricBase(models.Model):
+    """
+    Modelo base para métricas de calidad de datos.
+    Define cómo medir un factor específico.
+    """
     name = models.CharField(max_length=100, unique=True) 
     purpose = models.TextField() 
     granularity = models.CharField(max_length=100)  
@@ -91,6 +112,7 @@ class DQMetricBase(models.Model):
     
     is_disabled = models.BooleanField(default=False)
 
+    # Relación con factor
     measures = models.ForeignKey(DQFactorBase, on_delete=models.CASCADE, related_name='metrics', null=True, blank=True)
 
     def __str__(self):
@@ -98,6 +120,10 @@ class DQMetricBase(models.Model):
 
 
 class DQMethodBase(models.Model):
+    """
+    Modelo base para métodos de calidad de datos.
+    Implementación concreta de cómo calcular una métrica.
+    """
     name = models.CharField(max_length=100, unique=True) 
     inputDataType = models.CharField(max_length=100) 
     outputDataType = models.CharField(max_length=100) 
@@ -111,13 +137,19 @@ class DQMethodBase(models.Model):
         return self.name
 
 
-# Modelos de asociación para mantener las relaciones jerárquicas específicas de cada DQModel.
+# ---------------------------------------------------------------
+# Asociación Artefactos Base al DQModel
+# ---------------------------------------------------------------
 class DQModelDimension(models.Model):
+    """
+    Asocia una dimensión base con un DQModel específico.
+    """
     dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='model_dimensions')
     dimension_base = models.ForeignKey(DQDimensionBase, on_delete=models.CASCADE, related_name='model_dimensions')
     
-    
+    # Componentes de Contexto asociados (Estructura Category:Id) 
     context_components = models.JSONField(default=list, blank=True)
+    # Example:
     """
         "context_components": {
             "userType": [],
@@ -132,16 +164,22 @@ class DQModelDimension(models.Model):
             "systemRequirement": []
         }
     """
+    # Problemas de Calidad asociados (Estructura Id:Description) 
     dq_problems = models.JSONField(default=list, blank=True)
-    
 
     def __str__(self):
-        return f"{self.dimension_base.name} en {self.dq_model.version}"
+        return f"{self.dimension_base.name} - {self.dq_model.name} v{self.dq_model.version}"
 
 
 class DQModelFactor(models.Model):
+    """
+    Asocia un factor base con un DQModel específico.
+    Relacionado con una dimensión del modelo.
+    """
     dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='model_factors')
     factor_base = models.ForeignKey(DQFactorBase, on_delete=models.CASCADE, related_name='model_factors')
+    
+    # Relacion con dimension en DQ Model
     dimension = models.ForeignKey(
         DQModelDimension, 
         on_delete=models.CASCADE, 
@@ -150,48 +188,39 @@ class DQModelFactor(models.Model):
         editable=False  
     )
     
+    # Componentes de Contexto y Problemas de Calidad asociados 
     context_components = models.JSONField(default=list, blank=True)
-    
     dq_problems = models.JSONField(default=list, blank=True)
 
     def __str__(self):
-        return f"{self.factor_base.name} en {self.dq_model.version} bajo {self.dimension.dimension_base.name if self.dimension else 'sin dimensión'}"
-    """
-    def clean(self):
-        super().clean()
-        if self.factor_base.facetOf:
-            try:
-                self.dimension = DQModelDimension.objects.get(
-                    dq_model=self.dq_model,
-                    dimension_base=self.factor_base.facetOf
-                )
-            except DQModelDimension.DoesNotExist:
-                raise ValidationError(
-                    f"No existe una dimensión en el modelo {self.dq_model.version} "
-                    f"para el factor base {self.factor_base.name} "
-                    f"(debería estar asociado a {self.factor_base.facetOf.name})"
-                )
-    """
+        return f"{self.factor_base.name} - {self.dq_model.name} v{self.dq_model.version} - facet Of {self.dimension.dimension_base.name if self.dimension else 'sin dimensión'}"
+
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
 
 
 class DQModelMetric(models.Model):
+    """
+    Asocia una métrica base con un DQModel específico.
+    Relacionado con un factor del modelo.
+    """
     dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='model_metrics')
     metric_base = models.ForeignKey(DQMetricBase, on_delete=models.CASCADE, related_name='model_metrics')
+    
+    # Relacion con factor en DQ Model
     factor = models.ForeignKey(
         DQModelFactor, 
         on_delete=models.CASCADE, 
         related_name='metrics',
-        editable=False  # Hacemos el campo no editable
+        editable=False 
     )
     
+    # Componentes de Contexto asociados 
     context_components = models.JSONField(default=list, blank=True)
         
-    
     def __str__(self):
-        return f"{self.metric_base.name} en {self.dq_model.version} bajo {self.factor.factor_base.name}"
+        return f"{self.metric_base.name} - {self.dq_model.name} {self.dq_model.version} - measures {self.factor.factor_base.name}"
 
     def clean(self):
         super().clean()
@@ -214,15 +243,22 @@ class DQModelMetric(models.Model):
 
 
 class DQModelMethod(models.Model):
+    """
+    Asocia un método base con un DQModel específico.
+    Relacionado con una métrica del modelo.
+    """
     dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='model_methods')
     method_base = models.ForeignKey(DQMethodBase, on_delete=models.CASCADE, related_name='model_methods')
+    
+    # Relacion con metrica en DQ Model
     metric = models.ForeignKey(
         DQModelMetric, 
         on_delete=models.CASCADE, 
         related_name='methods',
-        editable=False  # Hacemos el campo no editable
+        editable=False  
     )
     
+    # Componentes de Contexto asociados 
     context_components = models.JSONField(default=list, blank=True)
 
     def __str__(self):
@@ -248,68 +284,86 @@ class DQModelMethod(models.Model):
         super().save(*args, **kwargs)
 
 
+# ---------------------------------------------------------------
+# Métodos Aplicados
+# ---------------------------------------------------------------
 class AppliedDQMethod(models.Model):
+    """
+    Clase abstracta que representa un método de calidad del DQ Model aplicado a un data at hand especifico.
+    """
     name = models.CharField(max_length=100)
+    algorithm = models.TextField(default="", blank=False)  
     
-    appliedTo = JSONField() # Almacena tabla y columna con sus identificadores en un objeto JSON o lista de objetos JSON
-    # appliedTo = models.CharField(max_length=100)  # Atributos del esquema de datos a los que se aplica el método.
-    associatedTo = models.ForeignKey(DQModelMethod, on_delete=models.CASCADE, related_name='%(class)s_applied_methods')  # Método DQ al que está asociado.
+    # Identificadores y detalles de Table y Column del Data Schema del Data at Hand sobre los que se aplica el metodo
+    appliedTo = JSONField() 
     
-    algorithm = models.TextField(default="", blank=False)  #implementation
-
+    # Método en DQ Model aplicado
+    associatedTo = models.ForeignKey(
+        DQModelMethod, 
+        on_delete=models.CASCADE, 
+        related_name='%(class)s_applied_methods'
+    )
+    
     class Meta:
         abstract = True
 
     def __str__(self):
         return f"METH{self.associatedTo.id}-{self.appliedTo}"
 
-
 class MeasurementDQMethod(AppliedDQMethod):
+    """Método de tipo Medición aplicado"""
     pass
 
-
 class AggregationDQMethod(AppliedDQMethod):
+    """Método de tipo Agregación aplicado"""
     pass
 
 
 # PRIORITIZED DQ PROBLEMS
 # Enumerado para los tipos de prioridad
-class PriorityType(models.TextChoices):
-    HIGH = 'High', 'High'
-    MEDIUM = 'Medium', 'Medium'
-    LOW = 'Low', 'Low'
+#class PriorityType(models.TextChoices):
+  #  HIGH = 'High', 'High'
+ #   MEDIUM = 'Medium', 'Medium'
+  #  LOW = 'Low', 'Low'
 
-class PrioritizedDqProblem(models.Model):
-    dq_model = models.ForeignKey(DQModel, related_name='prioritized_problems', on_delete=models.CASCADE)
-    description = models.CharField(max_length=100)
+#class PrioritizedDqProblem(models.Model):
+ #   dq_model = models.ForeignKey(DQModel, related_name='prioritized_problems', on_delete=models.CASCADE)
+  #  description = models.CharField(max_length=100)
     
-    priority = models.IntegerField(default=-1)  # Prioridad numerica
-    priority_type = models.CharField(max_length=6, choices=PriorityType.choices, default=PriorityType.MEDIUM)
+ #   priority = models.IntegerField(default=-1)  # Prioridad numerica
+  #  priority_type = models.CharField(max_length=6, choices=PriorityType.choices, default=PriorityType.MEDIUM)
 
-    date = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)  # Fecha de creacion automatica
+  #  date = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)  # Fecha de creacion automatica
     
-    is_selected = models.BooleanField(default=False) # Se agrego al DQ Model
+  #  is_selected = models.BooleanField(default=False) # Se agrego al DQ Model
 
-    def __str__(self):
-        return f"DQ Problem: {self.description} - Priority {self.priority_type}"
+ #   def __str__(self):
+ #       return f"DQ Problem: {self.description} - Priority {self.priority_type}"
 
-    class Meta:
-        unique_together = ('dq_model', 'description')  # Asegura que no haya duplicados de problemas dentro de un DQModel
+ #   class Meta:
+ #       unique_together = ('dq_model', 'description')  # Asegura que no haya duplicados de problemas dentro de un DQModel
         
 
 
-# EXECUTION ---------------------------
+# ---------------------------------------------------------------
+# DQ Metadata: Ejecución de DQ Models
+# ---------------------------------------------------------------
 
 class DQModelExecution(models.Model):
+    """
+    Registro de ejecución de un DQ Model.
+    """
     execution_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    #dq_model = models.ForeignKey(DQModel, on_delete=models.CASCADE, related_name='executions')
-    dq_model_id = models.IntegerField()  # Cambiado de ForeignKey a IntegerField
+
+    # IntegerField en lugar de FK pues DB distintas
+    dq_model_id = models.IntegerField()  
+    
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=50, default='in_progress')  # in_progress/completed/failed
     
     class Meta:
-        db_table = 'dq_modelexecution'  # Opcional: personaliza nombre de tabla
+        db_table = 'dq_modelexecution'
         managed = True 
     
     @property
@@ -320,36 +374,35 @@ class DQModelExecution(models.Model):
     
 
 class DQMethodExecutionResult(models.Model):
+    """
+    Resultados de la ejecución de un método de calidad aplicado.
+    """
+    # Id Ejecucion DQ Model asociado
     execution = models.ForeignKey(DQModelExecution, on_delete=models.CASCADE, related_name='method_results')
 
-    # applied method id 
+    # Campos para relación genérica con el método aplicado
+    # Tipo del método aplicado (MeasurementDQMethod o AggregationDQMethod)
     content_type = models.ForeignKey(
         'contenttypes.ContentType',
         on_delete=models.CASCADE,
-        db_constraint=False  # para evitar problemas entre bases de datos
+        db_constraint=False  # evitar problemas entre bases de datos
     )
+    # Id del método aplicado
     object_id = models.PositiveIntegerField()
     applied_method = GenericForeignKey('content_type', 'object_id') 
     
+    # DQ measurement
     executed_at = models.DateTimeField(auto_now_add=True)
-
     dq_value = models.JSONField(default=dict)
-    #result_type = models.CharField(
-    #    max_length=20, 
-    #    default='single',
-    #    choices=[('single', 'Single'), ('multiple', 'Multiple')]
-    #)
-    result_type = models.CharField(max_length=20, default='single')  # 'single' (aggregated) o 'multiple'
+    result_type = models.CharField(max_length=20, default='single') # 'single' (ej: columna) o 'multiple' (ej: filas)
     details = models.JSONField(default=dict)
     
-    # Campos para DQ assessment
-    assessment_thresholds = models.JSONField(default=list, blank=True)  # Almacena los umbrales definidos
-    #assessment_score = models.CharField(max_length=100, null=True, blank=True)  # Cambiado de evaluation_score
-    assessed_at = models.DateTimeField(null=True, blank=True)  # Cambiado de evaluated_at
-    #is_passing = models.BooleanField(null=True, blank=True)
+    # DQ assessment
+    assessment_thresholds = models.JSONField(default=list, blank=True) 
+    assessed_at = models.DateTimeField(null=True, blank=True) 
     
     class Meta:
-        db_table = 'dq_method_execution_result'  # Opcional
+        db_table = 'dq_method_execution_result' 
         managed = True
         indexes = [
             models.Index(fields=['content_type', 'object_id']),
@@ -364,7 +417,7 @@ class DQMethodExecutionResult(models.Model):
     
     def assess(self, thresholds=None):
         """
-        Evalúa el resultado contra los umbrales proporcionados o los almacenados
+        Evalúa el resultado contra los umbrales definidos.
         """
         if thresholds:
             self.assessment_thresholds = thresholds
@@ -378,19 +431,19 @@ class DQMethodExecutionResult(models.Model):
         for threshold in self.assessment_thresholds:
             if threshold['min'] <= value <= threshold['max']:
                 self.assessment_score = threshold['name']
-                #self.is_passing = threshold.get('is_passing', True)
                 self.save()
                 return True
         
         self.assessment_score = 'Not Assessed'
-        #self.is_passing = False
         self.save()
         return False
 
 
 class ExecutionTableResult(models.Model):
-    """Resultados a nivel de tabla"""
-    #id = models.AutoField(primary_key=True)
+    """
+    Resultados de ejecución a nivel de tabla.
+    """
+    # Id ejecucion metodo aplicado asociado
     execution_result = models.ForeignKey(
         'DQMethodExecutionResult', 
         on_delete=models.CASCADE,
@@ -399,11 +452,11 @@ class ExecutionTableResult(models.Model):
     table_id = models.IntegerField()
     table_name = models.CharField(max_length=255)
     
-    #dq_value = models.JSONField()  
+    # DQ measurement details
+    executed_at = models.DateTimeField(auto_now_add=True)
     dq_value = models.FloatField(null=True, blank=True)
     
-    executed_at = models.DateTimeField(auto_now_add=True)
-    
+    # DQ assessment details
     assessment_score = models.CharField(max_length=100, null=True, blank=True)
     
     class Meta:
@@ -412,8 +465,8 @@ class ExecutionTableResult(models.Model):
             models.Index(fields=['execution_result']),
         ]
         
-    # Función para evaluar el resultado contra los thresholds
     def assess_result(self):
+        """Evalúa el resultado contra los thresholds definidos"""
         thresholds = self.execution_result.assessment_thresholds
         value = self.dq_value
 
@@ -432,8 +485,10 @@ class ExecutionTableResult(models.Model):
 
 
 class ExecutionColumnResult(models.Model):
-    """Resultados a nivel de columna"""
-    #id = models.AutoField(primary_key=True)
+    """
+    Resultados de ejecución a nivel de columna.
+    """
+    # Id ejecucion metodo aplicado asociado
     execution_result = models.ForeignKey(
         'DQMethodExecutionResult',
         on_delete=models.CASCADE,
@@ -444,16 +499,15 @@ class ExecutionColumnResult(models.Model):
     column_id = models.IntegerField()
     column_name = models.CharField(max_length=255)
     
-    #dq_value = models.JSONField()  
+    # DQ measurement details
+    executed_at = models.DateTimeField(auto_now_add=True)
     dq_value = models.FloatField(null=True, blank=True)
     
-    executed_at = models.DateTimeField(auto_now_add=True)
-    
-    
+    # DQ assessment details
     assessment_score = models.CharField(max_length=100, null=True, blank=True)
 
-    # Función para evaluar el resultado contra los thresholds
     def assess_result(self):
+        """Evalúa el resultado contra los thresholds definidos"""
         thresholds = self.execution_result.assessment_thresholds
         value = self.dq_value
 
@@ -470,7 +524,6 @@ class ExecutionColumnResult(models.Model):
 
         self.save()
 
-
     class Meta:
         indexes = [
             models.Index(fields=['column_id']),
@@ -478,25 +531,27 @@ class ExecutionColumnResult(models.Model):
         ]
 
 class ExecutionRowResult(models.Model):
-    """Resultados a nivel de fila"""
-    #id = models.AutoField(primary_key=True)
+    """
+    Resultados de ejecución a nivel de fila.
+    """
+    # Id ejecucion metodo aplicado asociado
     execution_result = models.ForeignKey(
         'DQMethodExecutionResult',
         on_delete=models.CASCADE,
         related_name='row_results'
     )
-    applied_method_id = models.IntegerField()  # ID del método aplicado
+    applied_method_id = models.IntegerField()
     table_id = models.IntegerField()
     table_name = models.CharField(max_length=255)
     column_id = models.IntegerField(null=True, blank=True)
     column_name = models.CharField(max_length=255, blank=True)
-    row_id = models.CharField(max_length=255)  # ID original de la fila
+    row_id = models.CharField(max_length=255) 
     
-    #dq_value = models.JSONField()
+    # DQ measurement details
+    executed_at = models.DateTimeField(auto_now_add=True)
     dq_value = models.FloatField(null=True, blank=True)
     
-    executed_at = models.DateTimeField(auto_now_add=True)
-    
+    # DQ assessment details
     assessment_score = models.CharField(max_length=100, null=True, blank=True)
     
     class Meta:
@@ -505,9 +560,9 @@ class ExecutionRowResult(models.Model):
             models.Index(fields=['table_id', 'row_id']),
             models.Index(fields=['applied_method_id']),
         ]
-        
-    # Función para evaluar el resultado contra los thresholds
+
     def assess_result(self):
+        """Evalúa el resultado contra los thresholds definidos"""
         thresholds = self.execution_result.assessment_thresholds
         value = self.dq_value
 

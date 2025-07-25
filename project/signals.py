@@ -8,7 +8,8 @@ from django.db import transaction
 from django.conf import settings
 
 from dqmodel.models import DQMethodExecutionResult, DQModel, DQModelExecution
-from .models import PrioritizedDQProblem, Project, ProjectStage
+from .models import Project, ProjectStage
+#from .models import PrioritizedDQProblem, Project, ProjectStage
 
 logger = logging.getLogger(__name__)
 
@@ -50,80 +51,70 @@ def store_previous_dqmodel_version(sender, instance, **kwargs):
 # UPDATE STAGE 4 WHEN DQModel STATUS CHANGES
 # ---------------------------------------------------------
 @receiver(post_save, sender=Project)
-def update_project_on_dqmodel_assignment(sender, instance, created, **kwargs):
+def handle_project_stages_on_dqmodel_assignment(sender, instance, created, **kwargs):
     """
-    Señal post_save que actualiza el estado y etapa del Project si se asigna o cambia
-    dqmodel_version
+    Maneja la creación/actualización de stages cuando se asigna un DQModel a un proyecto.
     """
-    if instance.pk:
-        previous_dqmodel = _previous_dqmodel_version.get(instance.pk)
-        current_dqmodel = instance.dqmodel_version
-
-        # Si es una creación o dqmodel_version ha cambiado
-        if created or previous_dqmodel != current_dqmodel:
-            if current_dqmodel:
-                if current_dqmodel.status == 'draft':
-                    new_stage = 'ST4'
-                    new_status = 'in_progress'
-                    stage = ProjectStage.Stage.ST4
-                    stage_status = ProjectStage.Status.IN_PROGRESS
-                elif current_dqmodel.status == 'finished':
-                    new_stage = 'ST4'
-                    new_status = 'done'
-                    stage = ProjectStage.Stage.ST4
-                    stage_status = ProjectStage.Status.DONE
-                else:
-                    return  # Otros estados no gestionados
-
-                # Actualizar el Project sin disparar señales nuevamente
-                Project.objects.filter(pk=instance.pk).update(stage=new_stage, status=new_status)
-                
-                # Actualizar ProjectStage correspondiente
-                stage_obj = instance.get_stage(new_stage)
-                if stage_obj:
-                    stage_obj.stage = stage
-                    stage_obj.status = stage_status
-                    stage_obj.save()
-
-    # Limpiar el diccionario después de procesar
-    if instance.pk in _previous_dqmodel_version:
-        del _previous_dqmodel_version[instance.pk]
+    if not instance.dqmodel_version:
+        return  # No hay DQModel asignado, no hacer nada
+    
+    # Verificar si el proyecto solo tiene ST1-ST3 (Proyectos provenientes DB Fase 1)
+    existing_stages = set(instance.stages.values_list('stage', flat=True))
+    has_only_initial_stages = existing_stages == {'ST1', 'ST2', 'ST3'}
+    
+    # Si es un proyecto existente con solo ST1-ST3, crear las etapas faltantes
+    if has_only_initial_stages:
+        # Crear ST4 con IN_PROGRESS (porque acabamos de asignar el DQModel)
+        ProjectStage.objects.create(
+            project=instance,
+            stage=ProjectStage.Stage.ST4,
+            status=ProjectStage.Status.IN_PROGRESS
+        )
+        
+        # Crear ST5 y ST6 con TO_DO
+        for stage in ['ST5', 'ST6']:
+            ProjectStage.objects.create(
+                project=instance,
+                stage=stage,
+                status=ProjectStage.Status.TO_DO
+            )
+    else:
+        # Si ya existe ST4, actualizar su estado según el DQModel
+        st4 = instance.get_stage('ST4')
+        if st4:
+            if instance.dqmodel_version.status == 'draft':
+                st4.status = ProjectStage.Status.IN_PROGRESS
+            elif instance.dqmodel_version.status == 'finished':
+                st4.status = ProjectStage.Status.DONE
+            st4.save()
 
 @receiver(post_save, sender=DQModel)
-def update_project_stage_and_status(sender, instance, created, **kwargs):
+def sync_project_stages_with_dqmodel_status(sender, instance, created, **kwargs):
     """
-    Señal post_save que sincroniza el estado del proyecto (ST4) según el estado del DQModel.
+    Sincroniza el estado de ST4 con el estado del DQModel asociado.
     """
     try:
         project = Project.objects.get(dqmodel_version=instance)
     except Project.DoesNotExist:
-        # No hay Project asociado; no hacer nada
         return
-
-    # Definir las actualizaciones basadas en el estado actual de DQModel
-    if instance.status == 'draft':
-        new_stage = 'ST4'
-        new_status = 'in_progress'
-        stage = ProjectStage.Stage.ST4
-        stage_status = ProjectStage.Status.IN_PROGRESS
-    elif instance.status == 'finished':
-        new_stage = 'ST4'
-        new_status = 'done'
-        stage = ProjectStage.Stage.ST4
-        stage_status = ProjectStage.Status.DONE
-    else:
-        return
-
-    # Actualizar el Project sin disparar señales nuevamente
-    Project.objects.filter(pk=project.pk).update(stage=new_stage, status=new_status)
     
-    # Actualizar ProjectStage correspondiente
-    stage_obj = project.get_stage(new_stage)
-    if stage_obj:
-        stage_obj.stage = stage
-        stage_obj.status = stage_status
-        stage_obj.save()
-
+    # Asegurarnos que ST4 existe (por si acaso)
+    st4, created = ProjectStage.objects.get_or_create(
+        project=project,
+        stage=ProjectStage.Stage.ST4,
+        defaults={
+            'status': ProjectStage.Status.IN_PROGRESS if instance.status == 'draft' 
+                     else ProjectStage.Status.DONE
+        }
+    )
+    
+    # Solo actualizar si no fue creado recién
+    if not created:
+        if instance.status == 'draft':
+            st4.status = ProjectStage.Status.IN_PROGRESS
+        elif instance.status == 'finished':
+            st4.status = ProjectStage.Status.DONE
+        st4.save()
 
 # ---------------------------------------------------------
 # UPDATE STAGE 5 BASED ON EXECUTIONS OF DQModel
@@ -244,41 +235,41 @@ def update_stage6_on_assessment_done(sender, instance, **kwargs):
 # ---------------------------------------------------------
 # PRIORITIZED DQ PROBLEMS INITIALIZATION
 # ---------------------------------------------------------
-@receiver(post_save, sender=Project)
-def initialize_prioritized_problems(sender, instance, created, **kwargs):
-    """
-    Señal post_save que inicializa los problemas priorizados cuando se crea un nuevo Project.
-    Ejecuta la inicialización al final de la transacción con on_commit.
-    """
-    if created:
-        # Retrasar la inicialización hasta que la transacción se complete
-        transaction.on_commit(lambda: _initialize_prioritized_problems(instance, created))
+#@receiver(post_save, sender=Project)
+#def initialize_prioritized_problems(sender, instance, created, **kwargs):
+#    """
+#    Señal post_save que inicializa los problemas priorizados cuando se crea un nuevo Project.
+#    Ejecuta la inicialización al final de la transacción con on_commit.
+#    """
+#    if created:
+#        # Retrasar la inicialización hasta que la transacción se complete#
+#        transaction.on_commit(lambda: _initialize_prioritized_problems(instance, created))
 
 
-def _initialize_prioritized_problems(instance, created):
-    """
-    Inicializa los problemas priorizados para un proyecto.
-    Llama al endpoint de problemas de calidad para el proyecto y los guarda como PrioritizedDQProblem.
-    """
-    if created:
+#def _initialize_prioritized_problems(instance, created):
+#    """
+#    Inicializa los problemas priorizados para un proyecto.
+#    Llama al endpoint de problemas de calidad para el proyecto y los guarda como PrioritizedDQProblem.
+#    """
+#    if created:
         # Construir la URL del endpoint usando el ID del proyecto
-        endpoint_path = f'/api/projects/{instance.id}/dq-problems/'
-        url = f'{settings.BASE_URL}{endpoint_path}'
-        
-        try:
-            response = requests.get(url)
-            response.raise_for_status()  
-            dq_problems = response.json()
-            dq_problem_ids = [problem['id'] for problem in dq_problems]
-            
-            # Crear un PrioritizedDQProblem para cada dq_problem_id
-            for dq_problem_id in dq_problem_ids:
-                PrioritizedDQProblem.objects.create(
-                    dq_problem_id=dq_problem_id,
-                    priority='Medium',      # Prioridad por defecto
-                    is_selected=False,      # No seleccionado por defecto
-                    project_id=instance.id  # Asocia el problema priorizado con el proyecto recién creado
-                )
-        
-        except requests.RequestException as e:
-            logger.error(f"[PrioritizedDQProblem] Error al obtener los problemas de calidad: {e}")
+#        endpoint_path = f'/api/projects/{instance.id}/dq-problems/'
+#        url = f'{settings.BASE_URL}{endpoint_path}'
+#        
+#        try:
+#            response = requests.get(url)
+#            response.raise_for_status()  
+#            dq_problems = response.json()
+#            dq_problem_ids = [problem['id'] for problem in dq_problems]
+#            
+#            # Crear un PrioritizedDQProblem para cada dq_problem_id
+#            for dq_problem_id in dq_problem_ids:
+#                PrioritizedDQProblem.objects.create(
+#                    dq_problem_id=dq_problem_id,
+#                    priority='Medium',      # Prioridad por defecto
+#                    is_selected=False,      # No seleccionado por defecto
+#                    project_id=instance.id  # Asocia el problema priorizado con el proyecto recién creado
+#                )
+#        
+#        except requests.RequestException as e:
+#            logger.error(f"[PrioritizedDQProblem] Error al obtener los problemas de calidad: {e}")

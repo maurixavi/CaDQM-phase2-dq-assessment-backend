@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from .models import (
     DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase,
     DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod,
-    MeasurementDQMethod, AggregationDQMethod, PrioritizedDqProblem
+    MeasurementDQMethod, AggregationDQMethod
 )
 """
 @admin.register(DQModel)
@@ -118,5 +118,4 @@ admin.site.register(DQModelMethod, DQModelMethodAdmin)
 admin.site.register(MeasurementDQMethod)
 admin.site.register(AggregationDQMethod)
 
-
-admin.site.register(PrioritizedDqProblem)
+#admin.site.register(PrioritizedDqProblem)
