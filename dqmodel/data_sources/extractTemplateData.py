@@ -19,7 +19,6 @@ def extract_dimensions(markdown_text):
 
     return dimensions_base
 
-
 def extract_factors(markdown_text):
     # Expresion regular para encontrar los factores, sus descripciones y dimension
     factor_pattern = re.compile(r"### DQ Factor: (.+?)\n\*\*Semantic:\*\* (.+?)\n\*\*Facet of \(DQ Dimension\):\*\* (.+?)(?=\n###|$)", re.DOTALL)
@@ -34,7 +33,6 @@ def extract_factors(markdown_text):
         })
 
     return factors_base
-
 
 def extract_metrics(markdown_text):
     # Expresion regular para encontrar las metricas y sus atributos

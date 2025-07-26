@@ -19,26 +19,23 @@ from .views import (
     TableResultsViewSet,
     generate_dqmethod_suggestion,
     generate_dq_dim_factor_suggestion,
-    
     get_full_dqmodel,
-
 )
 
 router = routers.DefaultRouter()
-router.register(r'dqmodels', DQModelViewSet)
-router.register(r'dimensions', DQModelDimensionViewSet)
-router.register(r'factors', DQModelFactorViewSet)
-router.register(r'metrics', DQModelMetricViewSet)
-router.register(r'methods', DQModelMethodViewSet)
-
 
 router.register(r'dimensions-base', DQDimensionBaseViewSet)
 router.register(r'factors-base', DQFactorBaseViewSet)
 router.register(r'metrics-base', DQMetricBaseViewSet)
 router.register(r'methods-base', DQMethodBaseViewSet)
+
+router.register(r'dqmodels', DQModelViewSet)
+router.register(r'dimensions', DQModelDimensionViewSet)
+router.register(r'factors', DQModelFactorViewSet)
+router.register(r'metrics', DQModelMetricViewSet)
+router.register(r'methods', DQModelMethodViewSet)
 router.register(r'measurement-methods', MeasurementDQMethodViewSet)
 router.register(r'aggregation-methods', AggregationDQMethodViewSet)
-
 
 router.register(r'execution-results', DQExecutionResultViewSet, basename='execution-results')
 
@@ -87,14 +84,6 @@ urlpatterns = [
         name='dqmodel-dimension-factor-metric-methods'
     ),
     
-    # AI SUGGESTIONS
-    path('generate-dqmethod-suggestion/', generate_dqmethod_suggestion, name='generate_dqmethod_suggestion'),
-    
-    path('generate-dq-dimension-factor-suggestion/', generate_dq_dim_factor_suggestion, name='generate_dq_dim_factor_suggestion'),
-    
-
-    
-    # Individual Views: Dim, Factor, Metric and Method in DQ Model
     path(
         "dqmodels/<int:pk>/dimensions/<int:dimension_id>/",
         DQModelViewSet.as_view({'get': 'get_dimension'}),
@@ -124,28 +113,21 @@ urlpatterns = [
     
     path('dqmodels/<int:dq_model_id>/full/', get_full_dqmodel, name='get_full_dqmodel'),
     
-    # Rutas para métodos aplicados (integradas en el ViewSet)
-    #path(
-    #    "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/",
-    #    DQModelViewSet.as_view({'get': 'get_applied_method'}),
-    #    name='dqmodel-applied-method-detail'
-    #),
     path(
-    "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/",
-    DQModelViewSet.as_view({
-        'get': 'get_applied_method',
-        'patch': 'update_applied_method',
-        'put': 'update_applied_method'
-    }),
-    name='dqmodel-applied-method-detail'
-),
+        "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/",
+        DQModelViewSet.as_view({
+            'get': 'get_applied_method',
+            'patch': 'update_applied_method',
+            'put': 'update_applied_method'
+        }),
+        name='dqmodel-applied-method-detail'
+    ),
 
     path(
         "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/assess/",
         DQModelViewSet.as_view({'post': 'assess_applied_method'}),
         name='dqmodel-applied-method-assess'
     ),
-    
     
     path(
         "dqmodels/<int:dq_model_id>/start-dq-model-execution/",
@@ -170,22 +152,12 @@ urlpatterns = [
         name='metric-base-methods'
     ),
     
-    # Resultados de ejecución (ahora manejado por ExecutionLogViewSet a través del router)
-    #path(
-    #    'api/dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execute/',
-    #    views.execute_applied_method,
-    #    name='execute_applied_method'
-    #),
-    
     # Asegúrate de que esta ruta esté correctamente configurada:
     path(
         "dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execute/",
         DQModelViewSet.as_view({'post': 'execute_applied_method'}),
         name='dqmodel-applied-method-execute'
     ),
-    
-    # Puedes eliminar esta ruta si ahora manejas todo desde el ViewSet:
-    # path('api/dqmodels/<int:dq_model_id>/applied-dq-methods/<int:method_id>/execute/', ...
     
     # Resultados de ejecución
     path(
@@ -232,12 +204,6 @@ urlpatterns = [
         DQExecutionResultViewSet.as_view({'patch': 'update_execution_result_thresholds'}),
         name='update-method-execution-assessment'
     ),
-    #path(
-     #   'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-method-results/<int:result_id>',
-     #   DQExecutionResultViewSet.as_view({'patch': 'update_execution_result_thresholds'}),
-     #   name='update-execution-result-thresholds'
-    #),
-        
     
     # EJECUCIONES POR DQMODEL
     path(
@@ -251,7 +217,6 @@ urlpatterns = [
         name='dqmodel-measurement-execution-detail'
     ),
     
-        
     # RESULTADOS POR DATOS 
     path("dq-measurement/column-results/", views.DQExecutionResultViewSet.as_view({'get': 'get_measurement_results_column_granularity'}), name="get-column-results"),
     
@@ -260,7 +225,6 @@ urlpatterns = [
     path("dq-measurement/column-results/column/<int:column_id>/", views.DQExecutionResultViewSet.as_view({'get': 'get_measurement_results_column_granularity_by_column'}), name="get-column-results-by-column"),
     
     path("dq-measurement/column-results/table/<int:table_id>/", views.DQExecutionResultViewSet.as_view({'get': 'get_measurement_results_column_granularity_by_table'}), name="get-column-results-by-table"),
-    
     
     path(
         'dqmodels/<int:dq_model_id>/applied-dq-methods/<int:applied_method_id>/execution-result/<int:result_id>/thresholds/',
@@ -273,7 +237,12 @@ urlpatterns = [
         DQExecutionResultViewSet.as_view({'get': 'get_current_execution'}),
         name='dqmodel-current-execution'
     ),
+    
+    # ==============================================
+    # AI Suggestion Endpoints
+    # ==============================================
+    path('generate-dqmethod-suggestion/', generate_dqmethod_suggestion, name='generate_dqmethod_suggestion'),
+    
+    path('generate-dq-dimension-factor-suggestion/', generate_dq_dim_factor_suggestion, name='generate_dq_dim_factor_suggestion'),
 
-    
-    
 ]

@@ -1,84 +1,33 @@
 from rest_framework import serializers
-from .models import DQMethodExecutionResult, DQModel, DQDimensionBase, DQFactorBase, DQMetricBase, DQMethodBase, DQModelDimension, DQModelFactor, DQModelMetric, DQModelMethod, MeasurementDQMethod, AggregationDQMethod
-#, PrioritizedDqProblem
+from .models import (
+    DQModel,
+    DQDimensionBase,
+    DQFactorBase,
+    DQMetricBase,
+    DQMethodBase,
+    DQModelDimension,
+    DQModelFactor,
+    DQModelMetric,
+    DQModelMethod,
+    MeasurementDQMethod,
+    AggregationDQMethod,
+    DQModelExecution,
+    DQMethodExecutionResult,
+    ExecutionTableResult,
+    ExecutionColumnResult,
+    ExecutionRowResult
+)
 
-from rest_framework import serializers
-from .models import ExecutionTableResult, ExecutionColumnResult, ExecutionRowResult, DQModelExecution
 
-
-class DQModelExecutionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DQModelExecution
-        fields = '__all__'  
-
-
-class TableResultSerializer(serializers.ModelSerializer):
-    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
-    applied_method_id = serializers.IntegerField(source='execution_result.object_id')
-    
-    class Meta:
-        model = ExecutionTableResult
-        fields = [
-            'id',
-            'table_id',
-            'table_name',
-            'dq_value',
-            'executed_at',
-            'execution_id',
-            'applied_method_id'
-        ]
-
-class ColumnResultSerializer(serializers.ModelSerializer):
-    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
-    applied_method_id = serializers.IntegerField(source='execution_result.object_id')
-    
-    class Meta:
-        model = ExecutionColumnResult
-        fields = [
-            'id',
-            'table_id',
-            'table_name',
-            'column_id',
-            'column_name',
-            'dq_value',
-            'executed_at',
-            'execution_id',
-            'applied_method_id'
-        ]
-
-class RowResultSerializer(serializers.ModelSerializer):
-    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
-    applied_method_id = serializers.IntegerField(source='applied_method_id', read_only=True)
-    
-    class Meta:
-        model = ExecutionRowResult
-        fields = [
-            'id',
-            'table_id',
-            'table_name',
-            'column_id',
-            'column_name',
-            'row_id',
-            'dq_value',
-            'executed_at',
-            'execution_id',
-            'applied_method_id'
-        ]
-        
-
-#class PrioritizedDqProblemSerializer(serializers.ModelSerializer):
-#    class Meta:
-#        model = PrioritizedDqProblem
-#        fields = '__all__'  
-    
-
+# ==============================================
+# Base Model Serializers
+# ==============================================
 
 class DQDimensionBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQDimensionBase
         fields = '__all__'  
         
-
 class DQFactorBaseSerializer(serializers.ModelSerializer):
     facetOf = serializers.PrimaryKeyRelatedField(queryset=DQDimensionBase.objects.all(), required=False)
 
@@ -86,16 +35,10 @@ class DQFactorBaseSerializer(serializers.ModelSerializer):
         model = DQFactorBase
         fields = '__all__'   
     
- 
-
-
 class DQMetricBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = DQMetricBase
         fields = '__all__'   
-    
-
-
 
 class DQMethodBaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -103,29 +46,31 @@ class DQMethodBaseSerializer(serializers.ModelSerializer):
         fields = '__all__'   
     
 
-# DQ MODEL ------------------------------------------------------------------
 
-# Serializador para MeasurementDQMethod
+# ==============================================
+# DQ Model Component Serializers
+# ==============================================
+
 class MeasurementDQMethodSerializer(serializers.ModelSerializer):
+    """Serializer for Measurement Applied DQ Method in DQ Model"""
     class Meta:
         model = MeasurementDQMethod
         fields = ['id', 'name', 'appliedTo', 'algorithm', 'associatedTo']
-    
-    
 
-# Serializador para AggregationDQMethod
+
 class AggregationDQMethodSerializer(serializers.ModelSerializer):
+    """Serializer for Aggregation Applied DQ Method in DQ Model"""
     class Meta:
         model = AggregationDQMethod
         fields = ['id', 'name', 'appliedTo', 'algorithm', 'associatedTo']
         
     def update(self, instance, validated_data):
-        # Solo actualiza los campos permitidos
         instance.name = validated_data.get('name', instance.name)
         instance.appliedTo = validated_data.get('appliedTo', instance.appliedTo)
         instance.algorithm = validated_data.get('algorithm', instance.algorithm)
         instance.save()
         return instance
+
 
 class DQModelMethodSerializer(serializers.ModelSerializer):
     method_base = serializers.PrimaryKeyRelatedField(
@@ -168,6 +113,7 @@ class DQModelMetricSerializer(serializers.ModelSerializer):
         
         
 class DQModelFactorSerializer(serializers.ModelSerializer):
+    """Serializer for DQModelFactor model"""
     factor_base = serializers.PrimaryKeyRelatedField(
         queryset=DQFactorBase.objects.all()
     )
@@ -176,9 +122,7 @@ class DQModelFactorSerializer(serializers.ModelSerializer):
         queryset=DQModelDimension.objects.all()
     )
     
-    # metrics = DQModelMetricSerializer(many=True, required=False, allow_empty=True)
-    dq_model = serializers.PrimaryKeyRelatedField(queryset=DQModel.objects.all())  # Agregar este campo
-
+    dq_model = serializers.PrimaryKeyRelatedField(queryset=DQModel.objects.all()) 
 
     class Meta:
         model = DQModelFactor
@@ -186,15 +130,11 @@ class DQModelFactorSerializer(serializers.ModelSerializer):
 
 
 class DQModelDimensionSerializer(serializers.ModelSerializer):
-    #dq_model = serializers.PrimaryKeyRelatedField(read_only=True)  # Esto incluirá el dq_model id en la salida
-    dq_model = serializers.PrimaryKeyRelatedField(queryset=DQModel.objects.all())  # Permitir que se establezca el dq_model
-
+    dq_model = serializers.PrimaryKeyRelatedField(queryset=DQModel.objects.all()) 
     dimension_base = serializers.PrimaryKeyRelatedField(
         queryset=DQDimensionBase.objects.all()
     )
     dimension_name = serializers.CharField(source='dimension_base.name', read_only=True)
-
-    # factors = DQModelFactorSerializer(many=True, required=False, allow_empty=True)
     
     class Meta:
         model = DQModelDimension
@@ -209,14 +149,9 @@ class DQModelDimensionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Esta dimensión ya existe para el DQ Model.")
 
         return super().create(validated_data)
-    #class Meta:
-    #    model = DQModelDimension
-    #    fields = ['id', 'dimension_base', 'dimension_name', 'context_components']
 
 
 
-
-# Serializador para DQModel
 class DQModelSerializer(serializers.ModelSerializer):
     # Serializadores de escritura (write-only)
     model_dimensions = DQModelDimensionSerializer(many=True, write_only=True, required=False)
@@ -225,15 +160,6 @@ class DQModelSerializer(serializers.ModelSerializer):
     model_methods = DQModelMethodSerializer(many=True, write_only=True, required=False)
     measurement_methods = MeasurementDQMethodSerializer(many=True, required=False, write_only=True)
     aggregation_methods = AggregationDQMethodSerializer(many=True, required=False, write_only=True)
-
-    # Serializadores de lectura (read-only)
-    #dimensions = DQModelDimensionSerializer(source='model_dimensions', many=True, read_only=True)
-    # campos de lectura que no se incluiran en 'fields'
-    # factors = DQModelFactorSerializer(source='model_factors', many=True, read_only=True)
-    # metrics = DQModelMetricSerializer(source='model_metrics', many=True, read_only=True)
-    # methods = DQModelMethodSerializer(source='model_methods', many=True, read_only=True)
-    # measurement_methods_read = MeasurementDQMethodSerializer(many=True, read_only=True)
-    # aggregation_methods_read = AggregationDQMethodSerializer(many=True, read_only=True)
 
     class Meta:
         model = DQModel
@@ -314,36 +240,6 @@ class DQModelSerializer(serializers.ModelSerializer):
             )
 
         return dq_model
-
-    """
-    def get_new_version(self, current_version):
-        
-        Implementa una lógica para determinar la nueva versión.
-        Por ejemplo, si la versión actual es 'v1.0', la nueva será 'v1.1'.
-        
-        try:
-            prefix, number = current_version.split('v')
-            new_number = float(number) + 0.1
-            return f"{current_version} v{new_number:.1f}"
-        except ValueError:
-            # Si no sigue el formato esperado, asignar una versión por defecto
-            new_version = current_version + " New Version"
-            return new_version
-    
-    def create_new_version(self, instance, validated_data):
-        
-        Crea una nueva versión basada en una instancia existente.
-        
-        validated_data['previous_version'] = instance
-        validated_data['status'] = 'draft'  # Iniciar la nueva versión como 'draft'
-        validated_data['version'] = self.get_new_version(instance.version)
-
-        # Crear una nueva instancia en lugar de modificar la existente
-        serializer = DQModelSerializer(data=validated_data)
-        serializer.is_valid(raise_exception=True)
-        return serializer.save()
-    
-    """
     
     def increment_version(self, current_version):
         """
@@ -365,15 +261,13 @@ class DQModelSerializer(serializers.ModelSerializer):
         Crea una nueva versión basada en una instancia existente
         Copia todas las relaciones asociadas (dimensiones, factores, etc.)
         """
-        # Generar la nueva versión
-        #current_version_number = self.get_new_version(original_instance.version) # Obtiene por ejemplo version "1.0.0"
-        current_version_number = original_instance.version # Obtiene por ejemplo version "1.0.0"
+        current_version_number = original_instance.version
         new_version_number = self.increment_version(current_version_number) # Ejemplo version "1.0.0" -> "2.0.0"
         
         # Crear la nueva instancia de DQModel
         new_instance = DQModel.objects.create(
             name=original_instance.name, # Mantener el mismo nombre 
-            version=new_version_number, # Nueva versión incrementada
+            version=new_version_number,
             status='draft',
             previous_version=original_instance
         )
@@ -463,11 +357,9 @@ class DQModelSerializer(serializers.ModelSerializer):
     
     
     def update(self, instance, validated_data):
-        # Verificar si el DQModel está finalizado
+        # Si Finalizo -> Se crea version nueva
         if instance.status == 'finished':
-            #raise serializers.ValidationError("No se pueden modificar DQModels finalizados. Crea una nueva versión.")
             return self.create_new_version(instance)
-            #return self.create_new_version(instance, validated_data)
 
         # Actualizar campos básicos
         instance.version = validated_data.get('version', instance.version)
@@ -478,6 +370,69 @@ class DQModelSerializer(serializers.ModelSerializer):
         return instance
 
 
+# ==============================================
+# Execution Result Serializers (DQ METADATA DB)
+# ==============================================
+
+class DQModelExecutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DQModelExecution
+        fields = '__all__'  
+
+
+class TableResultSerializer(serializers.ModelSerializer):
+    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
+    applied_method_id = serializers.IntegerField(source='execution_result.object_id')
+    
+    class Meta:
+        model = ExecutionTableResult
+        fields = [
+            'id',
+            'table_id',
+            'table_name',
+            'dq_value',
+            'executed_at',
+            'execution_id',
+            'applied_method_id'
+        ]
+
+class ColumnResultSerializer(serializers.ModelSerializer):
+    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
+    applied_method_id = serializers.IntegerField(source='execution_result.object_id')
+    
+    class Meta:
+        model = ExecutionColumnResult
+        fields = [
+            'id',
+            'table_id',
+            'table_name',
+            'column_id',
+            'column_name',
+            'dq_value',
+            'executed_at',
+            'execution_id',
+            'applied_method_id'
+        ]
+
+class RowResultSerializer(serializers.ModelSerializer):
+    execution_id = serializers.UUIDField(source='execution_result.execution.execution_id')
+    applied_method_id = serializers.IntegerField(source='applied_method_id', read_only=True)
+    
+    class Meta:
+        model = ExecutionRowResult
+        fields = [
+            'id',
+            'table_id',
+            'table_name',
+            'column_id',
+            'column_name',
+            'row_id',
+            'dq_value',
+            'executed_at',
+            'execution_id',
+            'applied_method_id'
+        ]
+        
 
 class DQMethodExecutionResultSerializer(serializers.ModelSerializer):
     results = serializers.SerializerMethodField()

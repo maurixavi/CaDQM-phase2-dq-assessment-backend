@@ -6,25 +6,17 @@ from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage
 from decouple import config
 
-# Configuración de logging
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Configuración de API y modelo
-#GROQ_API_KEY = "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"
 GROQ_API_KEY = config('GROQ_API_KEY')
-print("GROQ_API_KEY:", GROQ_API_KEY)
-
-MODEL_NAME = "llama-3.3-70b-versatile" #"llama-3.1-8b-instant" 
-
-
-TEMPERATURE = 0.3
+MODEL_NAME = "llama-3.3-70b-versatile" 
 
 # Inicialización del cliente LLM
 llm = ChatGroq(
     groq_api_key=GROQ_API_KEY,
     model_name=MODEL_NAME,
-    temperature=TEMPERATURE
 )
 
 MAX_RETRIES = 5

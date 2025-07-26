@@ -1,107 +1,74 @@
 from datetime import timezone
 import time
 from uuid import UUID, uuid4
-from django.shortcuts import render
-from django.shortcuts import get_object_or_404
-from django.db import transaction
-from django.db.models import Value, CharField 
+import json
+import re
+import sqlparse
+import psycopg2
+import psycopg2.extras
+from decimal import Decimal
+
+from django.shortcuts import render, get_object_or_404
+from django.db import connections, transaction
+from django.db.models import Value, CharField, Prefetch
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
+
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action, api_view
-from django.db import connections
 
 from dqmodel.services import DQExecutionResultService
+from dqmodel.ai_modules.dq_dimension_factor_recommender import generate_ai_dq_factor_recommendation
+from dqmodel.ai_modules.dq_method_generator import generate_ai_dq_method
+
 from .models import (
-    DQMethodExecutionResult,
     DQModel,
     DQDimensionBase,
     DQFactorBase,
     DQMetricBase,
     DQMethodBase,
     DQModelDimension,
-    DQModelExecution,
     DQModelFactor,
     DQModelMetric,
     DQModelMethod,
-    ExecutionColumnResult,
-    ExecutionRowResult,
-    ExecutionTableResult,
     MeasurementDQMethod,
-    AggregationDQMethod
-    #,
-    #PrioritizedDqProblem,
-    #PrioritizedDqProblem
+    AggregationDQMethod,
+    DQModelExecution,
+    DQMethodExecutionResult,
+    ExecutionTableResult,
+    ExecutionColumnResult,
+    ExecutionRowResult
 )
+
 from .serializer import (
-    ColumnResultSerializer,
     DQModelSerializer,
     DQDimensionBaseSerializer,
     DQFactorBaseSerializer,
     DQMetricBaseSerializer,
     DQMethodBaseSerializer,
-    MeasurementDQMethodSerializer,
-    AggregationDQMethodSerializer,
     DQModelDimensionSerializer,
     DQModelFactorSerializer,
     DQModelMetricSerializer,
     DQModelMethodSerializer,
-    #PrioritizedDqProblemSerializer,
-    RowResultSerializer,
-    TableResultSerializer
-)
-#from .ai_utils import generate_ai_suggestion
-#from .dq_dimension_factor_recommender import get_dq_recommendation
-from dqmodel.ai_modules.dq_dimension_factor_recommender import generate_ai_dq_factor_recommendation
-from dqmodel.ai_modules.dq_method_generator import generate_ai_dq_method
-
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-import psycopg2
-from decimal import Decimal
-import json
-from .models import DQModel, AppliedDQMethod, MeasurementDQMethod, AggregationDQMethod
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from django.utils import timezone
-from .models import MeasurementDQMethod, AggregationDQMethod
-import psycopg2
-import psycopg2.extras
-from decimal import Decimal
-import json
-
-import sqlparse
-import psycopg2
-import time
-from decimal import Decimal
-from django.utils import timezone
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from rest_framework import status
-import re
-
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from django.contrib.contenttypes.models import ContentType
-from .models import (
-    DQModelExecution, 
-    DQMethodExecutionResult,
-    MeasurementDQMethod,
-    AggregationDQMethod
+    MeasurementDQMethodSerializer,
+    AggregationDQMethodSerializer,
+    TableResultSerializer,
+    ColumnResultSerializer,
+    RowResultSerializer
 )
 
 
-# AI SUGGESTIONS GENERATION
+# ==============================================
+# AI Generation Endpoints
+# ==============================================
 
+# DQ Dimensions and Factors Recommendation
 @api_view(['POST'])
 def generate_dq_dim_factor_suggestion(request):
     try:
@@ -145,6 +112,7 @@ def generate_dq_dim_factor_suggestion(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# DQ Methods Generation
 @api_view(['POST'])
 def generate_dqmethod_suggestion(request):
     try:
@@ -188,15 +156,15 @@ def generate_dqmethod_suggestion(request):
 
 
 
-# DQ DIMENSIONS, FACTORS, METRICS AND METHODS BASE VIEWS
+# ==============================================
+# Base Model Viewsets (Dimensions, Factors, Metrics, Methods)
+# ==============================================
 
-# ViewSet para DQDimensionBase
 class DQDimensionBaseViewSet(viewsets.ModelViewSet):
     queryset = DQDimensionBase.objects.all()
     serializer_class = DQDimensionBaseSerializer
 
 
-# ViewSet para DQFactorBase
 class DQFactorBaseViewSet(viewsets.ModelViewSet):
     queryset = DQFactorBase.objects.all()
     serializer_class = DQFactorBaseSerializer
@@ -208,7 +176,7 @@ class DQFactorBaseViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(factors, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-# ViewSet para DQMetricBase
+
 class DQMetricBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMetricBase.objects.all()
     serializer_class = DQMetricBaseSerializer
@@ -228,7 +196,6 @@ class DQMetricBaseViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     
         
-# ViewSet para DQMethodBase
 class DQMethodBaseViewSet(viewsets.ModelViewSet):
     queryset = DQMethodBase.objects.all()
     serializer_class = DQMethodBaseSerializer
@@ -241,8 +208,10 @@ class DQMethodBaseViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+# ==============================================
+# DQModel Main Viewset (Core Functionality)
+# ==============================================
 
-# ViewSet para DQModel
 class DQModelViewSet(viewsets.ModelViewSet):
     queryset = DQModel.objects.all().prefetch_related(
         'model_dimensions__dimension_base',
@@ -597,7 +566,6 @@ class DQModelViewSet(viewsets.ModelViewSet):
                 "message": f"Error inesperado durante la evaluación: {str(e)}"
             }, status=500)
 
-
     @action(detail=True, methods=['post'], url_path='start-dq-model-execution')
     @transaction.atomic
     def start_dq_model_execution(self, request, pk=None):
@@ -629,212 +597,6 @@ class DQModelViewSet(viewsets.ModelViewSet):
                 'error': 'Failed to create execution',
                 'details': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-     
-    @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
-    def execute_applied_methodOk(self, request, pk=None, applied_method_id=None):
-        """
-        Ejecuta un método aplicado
-        """
-        debug_info = []
-        response_data = {
-            'status': 'started',
-            'dq_model_id': pk,
-            'method_id': applied_method_id,
-            'debug_info': debug_info
-        }
-        
-
-        try:
-            start_time = timezone.now()
-            debug_info.append(f"Inicio ejecución: {start_time}")
-            
-            # 1. Obtener el modelo y método
-            dq_model = get_object_or_404(DQModel, pk=pk)
-            debug_info.append(f"DQModel encontrado (ID: {dq_model.id}, Versión: {dq_model.version})")
-
-            # Buscar el método aplicado
-            try:
-                applied_method = MeasurementDQMethod.objects.get(
-                    id=applied_method_id,
-                    associatedTo__metric__factor__dq_model=dq_model
-                )
-                method_type = 'measurement'
-            except MeasurementDQMethod.DoesNotExist:
-                try:
-                    applied_method = AggregationDQMethod.objects.get(
-                        id=applied_method_id,
-                        associatedTo__metric__factor__dq_model=dq_model
-                    )
-                    method_type = 'aggregation'
-                except AggregationDQMethod.DoesNotExist:
-                    debug_info.append("Método no encontrado")
-                    return Response(
-                        {"error": "Applied method not found in this DQModel", "debug_info": debug_info},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-
-            debug_info.append(f"Método aplicado: {applied_method.name} (ID: {applied_method.id}, Tipo: {method_type})")
-            debug_info.append(f"Algoritmo: {applied_method.algorithm}")
-
-            # 2. Conectar a la base de datos y ejecutar
-            try:
-                conn = psycopg2.connect(
-                    dbname='data_at_hand_v01',
-                    user='postgres',
-                    password='password',
-                    host='localhost',
-                    port=5432
-                )
-                debug_info.append("Conexión a PostgreSQL establecida")
-
-                # Medición de tiempo de ejecución
-                query_start_time = time.time()
-                
-                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-                    cursor.execute(applied_method.algorithm)
-                    columns = [desc[0] for desc in cursor.description]
-                    raw_rows = cursor.fetchall()
-                    
-                    # Convertir Decimal a float para serialización JSON
-                    def convert_decimals(obj):
-                        if isinstance(obj, Decimal):
-                            return float(obj)
-                        elif isinstance(obj, dict):
-                            return {k: convert_decimals(v) for k, v in obj.items()}
-                        elif isinstance(obj, (list, tuple)):
-                            return [convert_decimals(item) for item in obj]
-                        return obj
-                    
-                    rows = [convert_decimals(dict(row)) for row in raw_rows]
-                    
-                    query_time = time.time() - query_start_time
-                    debug_info.append(f"Tiempo de ejecución SQL: {query_time:.4f} segundos")
-                    
-                    # 3. Determinar el tipo de resultado y procesarlo
-                    is_aggregation = len(rows) <= 1  # Si es 0 o 1 fila, lo consideramos agregación
-
-                    if is_aggregation:
-                        # Método de agregación - obtener el valor DQ inteligentemente
-                        if not rows:
-                            result_value = None
-                        else:
-                            # Estrategia para encontrar el valor DQ:
-                            # 1. Buscar columna llamada 'dq_value'
-                            # 2. Si no existe, usar la última columna
-                            # 3. Si tampoco, usar el primer valor
-                            row = rows[0]
-                            if 'dq_value' in row:
-                                result_value = row['dq_value']
-                            elif columns:
-                                result_value = row.get(columns[-1])  # Última columna por defecto
-                            else:
-                                result_value = next(iter(row.values())) if row else None
-                        
-                        result_type = 'single'
-                        
-                        processed_results = {
-                            'applied_dq_method_name': applied_method.name,
-                            'applied_dq_method_id': applied_method.id,
-                            'applied_to': applied_method.appliedTo,
-                            'execution_time_seconds': round(query_time, 4),
-                            'dq_value': result_value,
-                            'value_source': 'explicit_dq_column' if 'dq_value' in (rows[0] if rows else {}) else 'last_column'
-                        }
-                    else:
-                        # Método por fila - múltiples resultados
-                        result_type = 'multiple'
-                        
-                        # Asegurar que cada fila tenga un ID único
-                        rows_with_ids = []
-                        for idx, row in enumerate(rows, start=1):
-                            if 'id' not in row:
-                                row['row_id'] = idx
-                            rows_with_ids.append(row)
-                        
-                        # Determinar qué columna es el valor DQ
-                        dq_column = None
-                        if 'dq_value' in columns:
-                            dq_column = 'dq_value'
-                        elif len(columns) == 1:
-                            dq_column = columns[0]  # Si solo hay una columna, usa esa
-                        elif columns:
-                            dq_column = columns[-1] # Si hay múltiples, usa la última por defecto
-                        
-                        
-                        processed_results = {
-                            'total_rows': len(rows_with_ids),
-                            'columns': columns,
-                            'dq_column': dq_column,  # Indicar qué columna se usó como DQ value
-                            'sample_data': rows_with_ids[:5],  # Mostrar muestra reducida
-                            'applied_dq_method_name': applied_method.name,
-                            'applied_dq_method_id': applied_method.id,
-                            'applied_to': applied_method.appliedTo
-                        }
-                        
-                        result_value = {
-                            'rows': rows_with_ids,
-                            'columns': columns,
-                            'dq_column': dq_column
-                        }
-
-                    # 4. Obtener estadísticas de ejecución
-                    cursor.execute(f"EXPLAIN ANALYZE {applied_method.algorithm}")
-                    explain_output = cursor.fetchall()
-                    total_records = self.parse_explain_analyze(explain_output)
-                    debug_info.append(f"Total de registros recorridos: {total_records}")
-
-                    # 5. Guardar resultados en metadata_db
-                    try:
-                        DQExecutionResultService.save_execution_result(
-                            dq_model_id=pk,
-                            applied_method=applied_method,
-                            result_value=result_value if is_aggregation else result_value,
-                            result_type=result_type,
-                            execution_details={
-                                'query_time_seconds': query_time,
-                                'rows_affected': cursor.rowcount,
-                                'total_records': total_records,
-                                'query': applied_method.algorithm,
-                                'columns': columns
-                            }
-                        )
-                    except Exception as e:
-                        debug_info.append(f"Advertencia al guardar resultados: {str(e)}")
-
-                    # 6. Construir respuesta
-                    response_data.update({
-                        'status': 'success',
-                        'result_type': result_type,
-                        'results': processed_results,
-                        'execution_details': {
-                            'total_time_seconds': round((timezone.now() - start_time).total_seconds(), 4),
-                            'query_time_seconds': round(query_time, 4),
-                            'rows_affected': cursor.rowcount,
-                            'total_records': total_records
-                        },
-                        'debug_info': debug_info
-                    })
-
-                    return Response(response_data)
-
-            except Exception as e:
-                debug_info.append(f"Error ejecutando consulta: {str(e)}")
-                return Response(
-                    {'error': f"Query execution failed: {str(e)}", 'debug_info': debug_info},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        except Exception as e:
-            debug_info.append(f"Error inesperado: {str(e)}")
-            return Response(
-                {'error': f"Unexpected error: {str(e)}", 'debug_info': debug_info},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        finally:
-            if 'conn' in locals():
-                conn.close()
-                debug_info.append("Conexión cerrada")
-     
      
     @action(detail=True, methods=['post'], url_path='applied-dq-methods/(?P<applied_method_id>[^/.]+)/execute')
     def execute_applied_method(self, request, pk=None, applied_method_id=None):
@@ -1057,8 +819,6 @@ class DQModelViewSet(viewsets.ModelViewSet):
                 conn.close()
                 debug_info.append("Conexión cerrada")
      
-    
-    
     # Función para analizar la salida de EXPLAIN ANALYZE y obtener el número total de registros procesados         
     def parse_explain_analyze(self, explain_output):
         total_records = None
@@ -1079,8 +839,6 @@ class DQModelViewSet(viewsets.ModelViewSet):
                         total_records = 0  # Si no podemos convertir, lo dejamos en 0
                 break
         return total_records if total_records is not None else 0
-
-    
 
     def extract_table_names(self, sql_query):
         """
@@ -1110,25 +868,20 @@ class DQModelViewSet(viewsets.ModelViewSet):
         return tables
     
     
+# ==============================================
+# DQ Model Component Viewsets
+# ==============================================
 
-
-  
-        
-
-
-# ViewSet para MeasurementDQMethod
 class MeasurementDQMethodViewSet(viewsets.ModelViewSet):
     queryset = MeasurementDQMethod.objects.all()
     serializer_class = MeasurementDQMethodSerializer
 
 
-
-# ViewSet para AggregationDQMethod
 class AggregationDQMethodViewSet(viewsets.ModelViewSet):
     queryset = AggregationDQMethod.objects.all()
     serializer_class = AggregationDQMethodSerializer
 
-# ViewSet para DQModelDimension
+
 class DQModelDimensionViewSet(viewsets.ModelViewSet):
     queryset = DQModelDimension.objects.all()
     serializer_class = DQModelDimensionSerializer
@@ -1145,7 +898,6 @@ class DQModelDimensionViewSet(viewsets.ModelViewSet):
             return Response({"error": "Dimension not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
-# ViewSet para DQModelFactor
 class DQModelFactorViewSet(viewsets.ModelViewSet):
     queryset = DQModelFactor.objects.all()
     serializer_class = DQModelFactorSerializer
@@ -1157,7 +909,6 @@ class DQModelFactorViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# ViewSet para DQModelMetric
 class DQModelMetricViewSet(viewsets.ModelViewSet):
     queryset = DQModelMetric.objects.all()
     serializer_class = DQModelMetricSerializer
@@ -1169,7 +920,6 @@ class DQModelMetricViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# ViewSet para DQModelMethod
 class DQModelMethodViewSet(viewsets.ModelViewSet):
     queryset = DQModelMethod.objects.all()
     serializer_class = DQModelMethodSerializer
@@ -1181,35 +931,9 @@ class DQModelMethodViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# ViewSet para PrioritizedDqProblem
-#class PrioritizedDqProblemDetailView(viewsets.ModelViewSet):
-    #queryset = PrioritizedDqProblem.objects.all()
-   # serializer_class = PrioritizedDqProblemSerializer
-    
-   # def get_queryset(self):
-    #    dq_model_id = self.kwargs.get('dq_model_id')
-    #    return PrioritizedDqProblem.objects.filter(dq_model_id=dq_model_id).order_by('priority')
-
-   # def update(self, request, *args, **kwargs):
-    #    instance = self.get_object()
-        
-        # Validar que no se modifique dq_model_id
-   #     dq_model_id = request.data.get('dq_model')
-  #      if dq_model_id and int(dq_model_id) != instance.dq_model.id:
-  #          raise ValidationError({"dq_model": "No se permite cambiar el dqmodel de un problema priorizado existente."})
-        
-        # Validar que no se modifique description
-  #      description = request.data.get('description')
-  #      if description and description != instance.description:
-  #          raise ValidationError({"description": "No se permite modificar la descripción."})
-            
-
- #       return super().update(request, *args, **kwargs)
-    
-    
-    
-
-
+# ==============================================
+# Custom DQ Model Endpoint
+# ==============================================
 @api_view(['GET'])
 def get_full_dqmodel(request, dq_model_id):
     dq_model = get_object_or_404(DQModel, pk=dq_model_id)
@@ -1253,8 +977,9 @@ def get_full_dqmodel(request, dq_model_id):
     return Response(full_data, status=status.HTTP_200_OK)
 
 
-
-
+# ==============================================
+# Execution Result Viewsets and Endpoints (DQ METADATA DB)
+# ==============================================
 
 class DQExecutionResultViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], url_path='dqmodels/(?P<dq_model_id>\d+)/measurement-executions')
@@ -2105,12 +1830,92 @@ class DQExecutionResultViewSet(viewsets.ViewSet):
             traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-
-
-
+       
+@api_view(['POST'])
+def set_assessment_thresholds(request, result_id):
+    result = get_object_or_404(DQMethodExecutionResult, result_id=result_id)
+    result.assessment_thresholds = request.data.get('thresholds', [])
+    result.save()
     
-   
+    return Response({
+        'status': 'success',
+        'result_id': str(result_id),
+        'thresholds_set': len(result.assessment_thresholds)
+    })
+
+
+@api_view(['POST'])
+def execute_assessment(request, result_id):
+    result = get_object_or_404(DQMethodExecutionResult, result_id=result_id)
+    
+    # Opción 1: Usar thresholds del request
+    if 'thresholds' in request.data:
+        result.assess(thresholds=request.data['thresholds'])
+    # Opción 2: Usar thresholds ya guardados
+    else:
+        result.assess()
+    
+    return Response({
+        'status': 'success',
+        'result_id': str(result_id),
+        'assessment_score': result.assessment_score,
+        'is_passing': result.is_passing,
+        'assessed_at': result.assessed_at
+    })
+    
+
+class TableResultsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Endpoint para resultados a nivel de tabla"""
+    queryset = ExecutionTableResult.objects.using('metadata_db').all()
+    serializer_class = TableResultSerializer  # Debes crear este serializer
+    
+    def get_queryset(self):
+        dq_model_id = self.kwargs['dq_model_id']
+        return self.queryset.filter(
+            execution_result__execution__dq_model_id=dq_model_id
+        ).select_related('execution_result')
+
+
+class ColumnResultsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Endpoint para resultados a nivel de columna"""
+    queryset = ExecutionColumnResult.objects.using('metadata_db').all()
+    serializer_class = ColumnResultSerializer
+    
+    def get_queryset(self):
+        dq_model_id = self.kwargs['dq_model_id']
+        return self.queryset.filter(
+            execution_result__execution__dq_model_id=dq_model_id
+        ).select_related('execution_result')
+
+
+class RowResultsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Endpoint para resultados a nivel de fila"""
+    queryset = ExecutionRowResult.objects.using('metadata_db').all()
+    serializer_class = RowResultSerializer
+    #pagination_class = LargeResultsSetPagination  # Para manejar muchos registros
+    
+    def get_queryset(self):
+        dq_model_id = self.kwargs['dq_model_id']
+        queryset = self.queryset.filter(
+            execution_result__execution__dq_model_id=dq_model_id
+        )
+        
+        # Filtros opcionales
+        table_id = self.request.query_params.get('table_id')
+        if table_id:
+            queryset = queryset.filter(table_id=table_id)
+            
+        column_id = self.request.query_params.get('column_id')
+        if column_id:
+            queryset = queryset.filter(column_id=column_id)
+            
+        return queryset.select_related('execution_result')
+    
+
+# ==============================================
+# Helper Methods and Utilities
+# ==============================================
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
@@ -2259,84 +2064,4 @@ def get_db_connection():
         if 'conn' in locals():
             conn.close()
             
-            
-
-@api_view(['POST'])
-def set_assessment_thresholds(request, result_id):
-    result = get_object_or_404(DQMethodExecutionResult, result_id=result_id)
-    result.assessment_thresholds = request.data.get('thresholds', [])
-    result.save()
-    
-    return Response({
-        'status': 'success',
-        'result_id': str(result_id),
-        'thresholds_set': len(result.assessment_thresholds)
-    })
-
-@api_view(['POST'])
-def execute_assessment(request, result_id):
-    result = get_object_or_404(DQMethodExecutionResult, result_id=result_id)
-    
-    # Opción 1: Usar thresholds del request
-    if 'thresholds' in request.data:
-        result.assess(thresholds=request.data['thresholds'])
-    # Opción 2: Usar thresholds ya guardados
-    else:
-        result.assess()
-    
-    return Response({
-        'status': 'success',
-        'result_id': str(result_id),
-        'assessment_score': result.assessment_score,
-        'is_passing': result.is_passing,
-        'assessed_at': result.assessed_at
-    })
-    
-    
-from rest_framework import viewsets
-from django.db.models import Prefetch
-
-class TableResultsViewSet(viewsets.ReadOnlyModelViewSet):
-    """Endpoint para resultados a nivel de tabla"""
-    queryset = ExecutionTableResult.objects.using('metadata_db').all()
-    serializer_class = TableResultSerializer  # Debes crear este serializer
-    
-    def get_queryset(self):
-        dq_model_id = self.kwargs['dq_model_id']
-        return self.queryset.filter(
-            execution_result__execution__dq_model_id=dq_model_id
-        ).select_related('execution_result')
-
-class ColumnResultsViewSet(viewsets.ReadOnlyModelViewSet):
-    """Endpoint para resultados a nivel de columna"""
-    queryset = ExecutionColumnResult.objects.using('metadata_db').all()
-    serializer_class = ColumnResultSerializer
-    
-    def get_queryset(self):
-        dq_model_id = self.kwargs['dq_model_id']
-        return self.queryset.filter(
-            execution_result__execution__dq_model_id=dq_model_id
-        ).select_related('execution_result')
-
-class RowResultsViewSet(viewsets.ReadOnlyModelViewSet):
-    """Endpoint para resultados a nivel de fila"""
-    queryset = ExecutionRowResult.objects.using('metadata_db').all()
-    serializer_class = RowResultSerializer
-    #pagination_class = LargeResultsSetPagination  # Para manejar muchos registros
-    
-    def get_queryset(self):
-        dq_model_id = self.kwargs['dq_model_id']
-        queryset = self.queryset.filter(
-            execution_result__execution__dq_model_id=dq_model_id
-        )
-        
-        # Filtros opcionales
-        table_id = self.request.query_params.get('table_id')
-        if table_id:
-            queryset = queryset.filter(table_id=table_id)
-            
-        column_id = self.request.query_params.get('column_id')
-        if column_id:
-            queryset = queryset.filter(column_id=column_id)
-            
-        return queryset.select_related('execution_result')
+     

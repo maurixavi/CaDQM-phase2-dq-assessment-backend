@@ -3,19 +3,18 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import HumanMessage
 import json
 import logging
+from decouple import config
 
-# Configurar logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Configurar el cliente de Groq
-groq_api_key = "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"
-#model = "llama3-8b-8192"
-model = "llama3-8b-8192"
+# Configuración de API y modelo
+GROQ_API_KEY = config('GROQ_API_KEY')
+MODEL_NAME = "llama-3.3-70b-versatile" #"llama3-8b-8192"
 
 llm = ChatGroq(
-    groq_api_key=groq_api_key,
-    model_name=model
+    groq_api_key=GROQ_API_KEY,
+    model_name=MODEL_NAME
 )
 
 prompt_template = """

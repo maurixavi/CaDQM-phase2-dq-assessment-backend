@@ -8,7 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 
 
 # ---------------------------------------------------------------
-# Modelo DQModel
+# DQModel
 # ---------------------------------------------------------------
 
 class DQModel(models.Model):
@@ -317,32 +317,6 @@ class MeasurementDQMethod(AppliedDQMethod):
 class AggregationDQMethod(AppliedDQMethod):
     """Método de tipo Agregación aplicado"""
     pass
-
-
-# PRIORITIZED DQ PROBLEMS
-# Enumerado para los tipos de prioridad
-#class PriorityType(models.TextChoices):
-  #  HIGH = 'High', 'High'
- #   MEDIUM = 'Medium', 'Medium'
-  #  LOW = 'Low', 'Low'
-
-#class PrioritizedDqProblem(models.Model):
- #   dq_model = models.ForeignKey(DQModel, related_name='prioritized_problems', on_delete=models.CASCADE)
-  #  description = models.CharField(max_length=100)
-    
- #   priority = models.IntegerField(default=-1)  # Prioridad numerica
-  #  priority_type = models.CharField(max_length=6, choices=PriorityType.choices, default=PriorityType.MEDIUM)
-
-  #  date = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)  # Fecha de creacion automatica
-    
-  #  is_selected = models.BooleanField(default=False) # Se agrego al DQ Model
-
- #   def __str__(self):
- #       return f"DQ Problem: {self.description} - Priority {self.priority_type}"
-
- #   class Meta:
- #       unique_together = ('dq_model', 'description')  # Asegura que no haya duplicados de problemas dentro de un DQModel
-        
 
 
 # ---------------------------------------------------------------

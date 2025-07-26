@@ -2,34 +2,29 @@ from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
 from langchain.schema import HumanMessage
 import json
+from datetime import datetime
+import json
 import logging
+from decouple import config
 
-# Configurar logging
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-# Configurar el cliente de Groq
-#groq_api_key = "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"
-#model = "llama3-8b-8192"
-#model = "llama3-8b-8192"
-
-# Configuración de Groq
-GROQ_API_KEY = "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"
+# Configuración de API y modelo
+GROQ_API_KEY = config('GROQ_API_KEY')
+MODEL_NAME = "llama-3.3-70b-versatile" 
 #MODEL_NAME = "llama-3.3-70b-versatile"
-MODEL_NAME = "llama-3.1-8b-instant" 
+#MODEL_NAME = "llama-3.1-8b-instant" 
 #MODEL_NAME = "llama3-8b-8192"
 #MODEL_NAME = "llama3-70b-8192"
-#MODEL_NAME = "deepseek-r1-distill-llama-70b"
 
 TEMPERATURE = 0.3
-# Cliente LLM
+
 llm = ChatGroq(
     groq_api_key=GROQ_API_KEY,
     model_name=MODEL_NAME,
     temperature=TEMPERATURE
 )
-
-
 
 prompt_template_complex = """
 Please generate a data quality method based on the following metric. 
@@ -178,7 +173,6 @@ def generate_ai_suggestion_withoutokensusage(dq_metric: dict) -> dict:
         }
     
  
-
 def calculate_token_cost(model_name, input_tokens, output_tokens):
     model_name = model_name.lower()
 
@@ -323,9 +317,6 @@ TEST_METRICS = [
         "resultDomain": "[0,1]"
     }
 ]
-
-
-
 
 
 def main():
@@ -502,422 +493,6 @@ def main():
     print(f"  Total tokens salida: {total_stats['output_tokens']}")
     print(f"  Costo total: ${total_stats['total_cost_usd']:.6f}")
     print(f"  Costo promedio por método: ${output_data['metadata']['avg_cost_per_method']:.6f}")
-  
-    
-def main0():
-    # Casos de prueba
-    test_metrics = [
-        {
-            "id": 1,
-            "name": "NullValueRatio",
-            "purpose": "Medir el porcentaje de valores nulos en una columna",
-            "granularity": "attribute",
-            "resultDomain": "[0,1]"
-        },
-        {
-            "id": 2,
-            "name": "DuplicateDetection",
-            "purpose": "Identificar registros duplicados basados en una clave",
-            "granularity": "tuple",
-            "resultDomain": "boolean"
-        },
-        {
-            "id": 3,
-            "name": "EmailFormatCompliance",
-            "purpose": "Verificar si los valores siguen formato de email válido",
-            "granularity": "attribute",
-            "resultDomain": "boolean"
-        },
-        {
-            "id": 4,
-            "name": "ValueRangeCheck",
-            "purpose": "Validar que los valores estén dentro de un rango numérico",
-            "granularity": "attribute",
-            "resultDomain": "boolean"
-        }
-    ]
-
-    print("=== Iniciando pruebas del generador de métodos DQ ===\n")
-    
-    for metric in test_metrics:
-        print(f"\n🔹 Métrica bajo prueba: {metric['name']}")
-        print(f"Propósito: {metric['purpose']}")
-        print(f"Granularidad: {metric['granularity']}")
-        print(f"Dominio resultado: {metric['resultDomain']}\n")
-        
-        # Generar sugerencia
-        result = generate_ai_suggestion(metric)
-        
-        if 'error' in result:
-            print(f"❌ Error en generación: {result['error']}")
-            continue
-            
-        # Análisis de resultados
-        print("✅ Método generado:")
-        print(f"Nombre: {result['name']}")
-        print(f"Tipo entrada: {result['inputDataType']}")
-        print(f"Tipo salida: {result['outputDataType']}")
-        print(f"\nSQL generado:\n{result['algorithm']}\n")
-        
-        # Validaciones básicas
-        print("🔍 Análisis:")
-        
-        # 1. Coherencia nombre-propósito
-        if metric['purpose'].lower() in result['name'].lower():
-            print("✔ Nombre refleja el propósito de la métrica")
-        else:
-            print("⚠ Nombre podría no reflejar completamente el propósito")
-        
-        # 2. Coherencia SQL-tipo salida
-        if "SELECT" in result['algorithm']:
-            if "boolean" in result['outputDataType'].lower() and "AS is_valid" in result['algorithm'].lower():
-                print("✔ SQL adecuado para validación booleana")
-            elif "float" in result['outputDataType'].lower() and ("COUNT(" in result['algorithm'] or "SUM(" in result['algorithm']):
-                print("✔ SQL adecuado para cálculo numérico")
-            else:
-                print("⚠ Revisar correspondencia entre SQL y tipo de salida")
-        
-        # 3. Placeholders genéricos
-        if "table1" in result['algorithm'] and "column1" in result['algorithm']:
-            print("✔ Usa placeholders genéricos (table1/column1)")
-        else:
-            print("⚠ Podría contener nombres específicos no deseados")
-
-
-test_metrics_en = [
-        {
-            "id": 1,
-            "name": "NullValueRatio",
-            "purpose": "Measure percentage of null values in a column",
-            "granularity": "attribute",
-            "resultDomain": "[0,1]"
-        },
-        {
-            "id": 2,
-            "name": "DuplicateDetection",
-            "purpose": "Identify duplicate records based on a key",
-            "granularity": "tuple",
-            "resultDomain": "boolean"
-        },
-        {
-            "id": 3,
-            "name": "EmailFormatCompliance",
-            "purpose": "Verify if values follow valid email format",
-            "granularity": "attribute",
-            "resultDomain": "boolean"
-        },
-        {
-            "id": 4,
-            "name": "ValueRangeCheck",
-            "purpose": "Validate values fall within numerical range",
-            "granularity": "attribute",
-            "resultDomain": "boolean"
-        }
-    ]
-
-test_metrics_es = [
-        {
-            "id": 1,
-            "name": "NullValueRatio",
-            "purpose": "Medir el porcentaje de valores nulos en una columna",
-            "granularity": "column",
-            "resultDomain": "[0,1]"
-        },
-        {
-            "id": 2,
-            "name": "DuplicateDetection",
-            "purpose": "Identificar registros duplicados basados en una clave",
-            "granularity": "tuple",
-            "resultDomain": "boolean"
-        },
-        {
-            "id": 3,
-            "name": "EmailFormatCompliance",
-            "purpose": "Verificar si los valores siguen formato de email válido",
-            "granularity": "attribute",
-            "resultDomain": "boolean"
-        }
-    ]
-
-TEST_METRICS_inf = [
-        {
-            "id": 1,
-            "name": "NullValueRatio",
-            "purpose": "Measure percentage of null values in a column",
-            "granularity": "column",
-            "resultDomain": "[0,1]"
-        },
-        {
-            "id": 2,
-            "name": "DuplicateTuples",
-            "purpose": "Identify duplicate records in a table",
-            "granularity": "tuple",
-            "resultDomain": "boolean"
-        },
-        {
-            "id": 3,
-            "name": "CellFormatValidation",
-            "purpose": "Verify individual cell format compliance",
-            "granularity": "cell",
-            "resultDomain": "boolean"
-        },
-        {
-            "id": 4,
-            "name": "ValueRangeCompliance",
-            "purpose": "Check numeric values fall within specified range",
-            "granularity": "column",
-            "resultDomain": "[0,1]"
-        }
-    ]
-
-
-def main0():
-    # Casos de prueba
-    test_metrics = TEST_METRICS
-
-    # Estructura para guardar todos los resultados
-    output_data = {
-        "metadata": {
-            "test_date": datetime.now().isoformat(),
-            "model_used": "llama-3.3-70b-versatile",
-            "temperature": TEMPERATURE,
-            "total_metrics": len(test_metrics)
-        },
-        "results": []
-    }
-
-    print("=== Iniciando pruebas del generador de métodos DQ ===\n")
-    
-    for metric in test_metrics:
-        metric_results = {
-            "metric_id": metric["id"],
-            "metric_name": metric["name"],
-            "methods": [],
-            "unique_methods": []
-        }
-        
-        print(f"\n{'='*50}")
-        print(f"Metric: {metric['name']} (ID: {metric['id']})")
-        
-        # 5 iteraciones por métrica
-        for i in range(1, 11):
-            iteration_result = {
-                "iteration": i,
-                "success": False
-            }
-            
-            print(f"\n🌀 Iteración {i}:")
-            result = generate_ai_suggestion(metric)
-            
-            if 'error' in result:
-                iteration_result["error"] = result["error"]
-                print(f"❌ Error: {result['error']}")
-            else:
-                iteration_result.update({
-                    "success": True,
-                    "name": result["name"],
-                    "inputDataType": result["inputDataType"],
-                    "outputDataType": result["outputDataType"],
-                    "algorithm": result["algorithm"],
-                    "implements": result["implements"]
-                })
-                
-                print(f"🔹 Nombre: {result['name']}")
-                print(f"🔸 SQL:\n{result['algorithm']}\n")
-            
-            metric_results["methods"].append(iteration_result)
-        
-        # Análisis de métodos únicos
-        if metric_results["methods"]:
-            # Get all successful methods
-            successful_methods = [m for m in metric_results["methods"] if m["success"]]
-            
-            # Find unique methods by comparing all fields except iteration
-            unique_methods = []
-            seen_methods = []
-            
-            for method in successful_methods:
-                # Create a comparable dict without iteration number
-                method_signature = {k: v for k, v in method.items() 
-                                  if k not in ['iteration', 'success']}
-                
-                if method_signature not in seen_methods:
-                    seen_methods.append(method_signature)
-                    unique_methods.append({
-                        **method_signature,
-                        "count": 1,
-                        "iterations": [method["iteration"]]
-                    })
-                else:
-                    # Find and update existing unique method
-                    for um in unique_methods:
-                        um_signature = {k: v for k, v in um.items() 
-                                      if k not in ['count', 'iterations']}
-                        if um_signature == method_signature:
-                            um["count"] += 1
-                            um["iterations"].append(method["iteration"])
-                            break
-            
-            metric_results["unique_methods"] = unique_methods
-            
-            # Análisis de variabilidad
-            metric_results["analysis"] = {
-                "total_methods_generated": len(successful_methods),
-                "unique_methods_count": len(unique_methods),
-                "most_common_method": max(unique_methods, key=lambda x: x["count"]) if unique_methods else None,
-                "input_data_types": list(set(m["inputDataType"] for m in successful_methods)),
-                "output_data_types": list(set(m["outputDataType"] for m in successful_methods))
-            }
-        
-        output_data["results"].append(metric_results)
-    
-    # Guardar resultados en JSON
-    output_file = f"ai_eval_methods/executions/dq_methods_test_{datetime.now().strftime('%Y%m%d_%H%M')}_{TEMPERATURE}.json"
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n🎯 Resultados guardados en {output_file}")
-    
-    
-
-def main2():
-    # Casos de prueba
-    test_metrics = TEST_METRICS
-
-    print("=== Iniciando pruebas del generador de métodos DQ ===\n")
-    print("🔻 Se ejecutarán 5 iteraciones por métrica para evaluar consistencia\n")
-    
-    for metric in test_metrics:
-        print(f"\n{'='*50}")
-        print(f"Metric: {metric['name']} (ID: {metric['id']})")
-        print(f"Purpose: {metric['purpose']}")
-        print(f"Granularity: {metric['granularity']}")
-        print(f"Result Domain: {metric['resultDomain']}")
-        print(f"{'='*50}\n")
-        
-        results = []
-        
-        # 5 iteraciones por métrica
-        for i in range(1, 6):
-            print(f"\n🌀 Iteración {i}:")
-            result = generate_ai_suggestion(metric)
-            
-            if 'error' in result:
-                print(f"❌ Error: {result['error']}")
-                continue
-                
-            results.append(result)
-            
-            print(f"🔹 Nombre: {result['name']}")
-            print(f"🔸 SQL:\n{result['algorithm']}\n")
-        
-        # Análisis comparativo
-        if results:
-            print("\n📌 Análisis comparativo:")
-            
-            # 1. Variabilidad de nombres
-            unique_names = len(set(r['name'] for r in results))
-            print(f"- Variación en nombres: {unique_names} nombres distintos en {len(results)} iteraciones")
-            
-            # 2. Estructura SQL comparada
-            first_sql_structure = results[0]['algorithm'].split()[0].lower()
-            consistent_sql = all(r['algorithm'].split()[0].lower() == first_sql_structure for r in results)
-            print(f"- Consistencia en estructura SQL: {'✅' if consistent_sql else '⚠'} ({'similar' if consistent_sql else 'variable'} entre iteraciones)")
-            
-            # 3. Tipos de datos
-            input_types = set(r['inputDataType'] for r in results)
-            output_types = set(r['outputDataType'] for r in results)
-            print(f"- Tipos entrada: {input_types}")
-            print(f"- Tipos salida: {output_types}")
-            
-            # 4. Ejemplo de diferencias
-            if unique_names > 1:
-                print("\n🔎 Diferencias encontradas en nombres:")
-                for i, r in enumerate(results, 1):
-                    print(f"Iteración {i}: {r['name']}")
-            
-
-import json
-from datetime import datetime
-
-def main1():
-    # Casos de prueba
-    test_metrics = TEST_METRICS
-
-    # Estructura para guardar todos los resultados
-    output_data = {
-        "metadata": {
-            "test_date": datetime.now().isoformat(),
-            "model_used": "llama-3.3-70b-versatile",
-            "total_metrics": len(test_metrics)
-        },
-        "results": []
-    }
-
-    print("=== Iniciando pruebas del generador de métodos DQ ===\n")
-    
-    for metric in test_metrics:
-        metric_results = {
-            "metric_id": metric["id"],
-            "metric_name": metric["name"],
-            "methods": []
-        }
-        
-        print(f"\n{'='*50}")
-        print(f"Metric: {metric['name']} (ID: {metric['id']})")
-        
-        # 5 iteraciones por métrica
-        for i in range(1, 11):
-            iteration_result = {
-                "iteration": i,
-                "success": False
-            }
-            
-            print(f"\n🌀 Iteración {i}:")
-            result = generate_ai_suggestion(metric)
-            
-            if 'error' in result:
-                iteration_result["error"] = result["error"]
-                print(f"❌ Error: {result['error']}")
-            else:
-                iteration_result.update({
-                    "success": True,
-                    "name": result["name"],
-                    "inputDataType": result["inputDataType"],
-                    "outputDataType": result["outputDataType"],
-                    "algorithm": result["algorithm"],
-                    "implements": result["implements"]
-                })
-                
-                print(f"🔹 Nombre: {result['name']}")
-                print(f"🔸 SQL:\n{result['algorithm']}\n")
-            
-            metric_results["methods"].append(iteration_result)
-        
-        # Análisis de variabilidad
-        successful_runs = [r for r in metric_results["methods"] if r["success"]]
-        if successful_runs:
-            unique_names = len(set(r["name"] for r in successful_runs))
-            sql_structures = [r["algorithm"].split()[0].lower() for r in successful_runs]
-            
-            metric_results["analysis"] = {
-                "unique_names_count": unique_names,
-                "sql_consistency": all(s == sql_structures[0] for s in sql_structures),
-                "input_data_types": list(set(r["inputDataType"] for r in successful_runs)),
-                "output_data_types": list(set(r["outputDataType"] for r in successful_runs))
-            }
-        
-        output_data["results"].append(metric_results)
-    
-    # Guardar resultados en JSON
-    output_file = f"ai_eval_methods/executions/dq_methods_test_{datetime.now().strftime('%Y%m%d_%H%M')}_{TEMPERATURE}.json"
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n🎯 Resultados guardados en {output_file}")
-
-
-
 
 if __name__ == "__main__":
     main()

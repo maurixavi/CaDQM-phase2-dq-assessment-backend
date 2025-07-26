@@ -7,20 +7,21 @@ import time
 from datetime import datetime
 import random
 import time
+from decouple import config
 
-# Configuración silenciosa (solo errores)
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-# Configuración de Groq
-GROQ_API_KEY = "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"
+# Configuración de API y modelo
+GROQ_API_KEY = config('GROQ_API_KEY')
+MODEL_NAME = "llama-3.3-70b-versatile" 
 #MODEL_NAME = "llama-3.3-70b-versatile"
-MODEL_NAME = "llama-3.1-8b-instant" 
+#MODEL_NAME = "llama-3.1-8b-instant" 
 #MODEL_NAME = "llama3-8b-8192"
 #MODEL_NAME = "llama3-70b-8192"
 
 TEMPERATURE = 0.3
-# Cliente LLM
+
 llm = ChatGroq(
     groq_api_key=GROQ_API_KEY,
     model_name=MODEL_NAME,
@@ -69,9 +70,10 @@ dimensions_and_factors = {
     }
 }
 
-# -------------------
+
+# -----------------------------
 # CASO DE ESTUDIO
-#  -------------------
+#  -----------------------------
 dq_problems = {
     1: "Missing values in required fields",
     2: "Inconsistent data formats",
@@ -109,7 +111,6 @@ dq_problems_en = {
     15: "Data encoding errors",
     16: "Business rule violations"
 }
-
 
 dq_problems_es = {
     1: "Valores nulos en campos obligatorios",
@@ -321,9 +322,9 @@ context_components_en = {
 }
 
 
-# -----------
+# -----------------------------
 # PROMPT
-# -----------
+# -----------------------------
 
 DQ_RECOMMENDATION_PROMPT = """As a data quality expert, analyze these components and return ONLY a JSON object with:
 
@@ -367,7 +368,6 @@ IMPORTANT:
 """
 
 
-# UTILS
 def expand_context_components(abbreviated: dict) -> dict:
     expanded = {}
 
@@ -423,6 +423,7 @@ def expand_context_components(abbreviated: dict) -> dict:
 
     return expanded
 
+
 def extract_json_from_response(response: str) -> str:
     """Extrae el primer bloque JSON válido de un string"""
     depth = 0
@@ -445,25 +446,6 @@ def extract_json_from_response(response: str) -> str:
 
     return response[start_idx:end_idx]
 
-def calculate_token_cost0(model_name, input_tokens, output_tokens):
-    if model_name == "llama-3.3-70b-versatile":
-        input_price_per_million = 0.59
-        output_price_per_million = 0.79
-    elif model_name == "llama-3.1-8b-instant":
-        input_price_per_million = 0.05
-        output_price_per_million = 0.08
-    else:
-        raise ValueError("Modelo no soportado")
-
-    cost_input = (input_tokens / 1_000_000) * input_price_per_million
-    cost_output = (output_tokens / 1_000_000) * output_price_per_million
-    total_cost = cost_input + cost_output
-
-    return {
-        "input_cost_usd": round(cost_input, 6),
-        "output_cost_usd": round(cost_output, 6),
-        "total_cost_usd": round(total_cost, 6)
-    }
 
 def calculate_token_cost(model_name, input_tokens, output_tokens):
     model_name = model_name.lower()
@@ -748,168 +730,3 @@ if __name__ == "__main__":
             json.dump(output, f, indent=2, ensure_ascii=False)
 
         print(f"\n💾 Resultados guardados en {filename}")
-
-
-if __name__ != "__main__":
-
-    # Copiamos las dimensiones y factores para no modificar el original
-    remaining_dimensions = {
-        k: {"semantic": v["semantic"], "factors": v["factors"].copy()}
-        for k, v in dimensions_and_factors.items()
-    }
-
-    # Métricas agregadas
-    stats = {
-        "total_recommendations": 0,
-        "total_executions": 0,
-        "total_tokens": {
-            "prompt": 0,
-            "completion": 0,
-            "total": 0,
-            "time": 0
-        },
-        "total_cost_usd": {
-            "input_cost_usd": 0.0,
-            "output_cost_usd": 0.0,
-            "total_cost_usd": 0.0
-        },
-        "recommendations": []
-    }
-
-    print("Iniciando generación de recomendaciones con tracking de tokens...\n")
-
-    while True:
-        remaining_factors = sum(len(d['factors']) for d in remaining_dimensions.values())
-        if remaining_factors == 0:
-            print("\n✅ Todos los factores han sido recomendados.")
-            break
-
-        print(f"\n🔍 Factores restantes: {remaining_factors}")
-        print("=" * 50)
-
-        # Variables para acumular métricas por recomendación
-        rec_metrics = {
-            "executions": 0,
-            "tokens": {
-                "prompt": 0,
-                "completion": 0,
-                "total": 0,
-                "time": 0
-            }
-        }
-        
-        recommendation = None
-        start_time = time.time()
-
-        while not recommendation or "error" in recommendation:
-            rec_metrics["executions"] += 1
-            stats["total_executions"] += 1
-            
-            print(f"Ejecución {rec_metrics['executions']} para esta recomendación...")
-            
-            current_rec = get_dq_recommendation(
-                remaining_dimensions,
-                dq_problems_en, 
-                context_components_en
-            )
-                
-            # Si es exitosa, procesar tokens
-            recommendation = current_rec
-            tokens = recommendation.get("tokens_used", {})
-            
-            rec_metrics["tokens"]["prompt"] += tokens.get("prompt_tokens", 0)
-            rec_metrics["tokens"]["completion"] += tokens.get("completion_tokens", 0)
-            rec_metrics["tokens"]["total"] += tokens.get("total_tokens", 0)
-            rec_metrics["tokens"]["time"] += tokens.get("total_time", 0)
-
-        if not recommendation:
-            continue
-
-        # Actualizar estadísticas globales
-        stats["total_recommendations"] += 1
-        
-        for token_type in ["prompt", "completion", "total"]:
-            stats["total_tokens"][token_type] += rec_metrics["tokens"][token_type]
-        stats["total_tokens"]["time"] += rec_metrics["tokens"]["time"]
-        
-        # Calcular costo para esta recomendación
-        rec_cost = calculate_token_cost(
-            model_name=MODEL_NAME,
-            input_tokens=rec_metrics["tokens"]["prompt"],
-            output_tokens=rec_metrics["tokens"]["completion"]
-        )
-        
-        # Calcular promedios por recomendación
-        recommendation.update({
-            "executions_needed": rec_metrics["executions"],  
-            #"avg_tokens_per_attempt": {
-            #    "prompt": rec_metrics["tokens"]["prompt"] / rec_metrics["executions"],
-            #    "completion": rec_metrics["tokens"]["completion"] / rec_metrics["executions"],
-            #    "total": rec_metrics["tokens"]["total"] / rec_metrics["executions"]
-            #},
-            "total_time": rec_metrics["tokens"]["time"] * rec_metrics["executions"],
-            #"avg_time_per_attempt": rec_metrics["tokens"]["time"] / rec_metrics["executions"]
-            "token_cost_usd": rec_cost
-        })
-        
-        # Acumular costos globales
-        for k in ["input_cost_usd", "output_cost_usd", "total_cost_usd"]:
-            stats["total_cost_usd"][k] += rec_cost[k]
-
-        # Mostrar métricas
-        print(f"\n⭐ Recomendación #{stats['total_recommendations']}")
-        print(f"📊 Tokens: {rec_metrics['tokens']['prompt']} (prompt) + {rec_metrics['tokens']['completion']} (completion)")
-        print(f"⏱️ Tiempo: {rec_metrics['tokens']['time']:.2f}s total")
-        print(json.dumps({k:v for k,v in recommendation.items() if k not in ['tokens_used']}, indent=2))
-
-        # Eliminar factor recomendado
-        dim = recommendation['recommended_dimension']
-        factor = recommendation['recommended_factor']
-        if dim in remaining_dimensions and factor in remaining_dimensions[dim]['factors']:
-            del remaining_dimensions[dim]['factors'][factor]
-            if not remaining_dimensions[dim]['factors']:
-                del remaining_dimensions[dim]
-
-        stats["recommendations"].append(recommendation)
-
-    # Resumen final con métricas de tokens
-    print("\n" + "="*50)
-    print("📊 Resumen final de métricas:")
-    print(f"- Recomendaciones generadas: {stats['total_recommendations']}")
-    print(f"- Ejecuciones totales: {stats['total_executions']}")
-    print("\n🔍 Uso de tokens:")
-    print(f"  Prompt: {stats['total_tokens']['prompt']} (avg {stats['total_tokens']['prompt']/stats['total_executions']:.1f}/ejecución)")
-    print(f"  Completion: {stats['total_tokens']['completion']} (avg {stats['total_tokens']['completion']/stats['total_executions']:.1f}/ejecución)")
-    print(f"  Total: {stats['total_tokens']['total']} tokens")
-    print(f"\n⏱️ Tiempo total: {stats['total_tokens']['time']:.2f}s")
-    print(f"  Avg: {stats['total_tokens']['time']/stats['total_executions']:.2f}s/ejecución")
-    print(f"\n💰 Costo total estimado:")
-    print(f"  - Input: ${stats['total_cost_usd']['input_cost_usd']:.6f}")
-    print(f"  - Output: ${stats['total_cost_usd']['output_cost_usd']:.6f}")
-    print(f"  - Total: ${stats['total_cost_usd']['total_cost_usd']:.6f}")
-
-    # Guardar resultados
-    output = {
-        **stats,
-        "average_metrics": {
-            "executions_per_recommendation": stats["total_executions"] / stats["total_recommendations"],
-            "tokens_per_recommendation": {
-                "prompt": stats["total_tokens"]["prompt"] / stats["total_recommendations"],
-                "completion": stats["total_tokens"]["completion"] / stats["total_recommendations"],
-                "total": stats["total_tokens"]["total"] / stats["total_recommendations"]
-            },
-            "time_per_recommendation": stats["total_tokens"]["time"] / stats["total_recommendations"]
-        },
-        "cost_summary_usd": {
-            "input_cost_usd": round(stats["total_cost_usd"]["input_cost_usd"], 6),
-            "output_cost_usd": round(stats["total_cost_usd"]["output_cost_usd"], 6),
-            "total_cost_usd": round(stats["total_cost_usd"]["total_cost_usd"], 6)
-        }
-    }
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"ai_eval_results/dq_factors_recommendations_{MODEL_NAME}_{timestamp}_temp{TEMPERATURE}_es.json"
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
-
-    print(f"\n💾 Resultados guardados en {filename}")

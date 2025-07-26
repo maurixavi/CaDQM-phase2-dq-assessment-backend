@@ -1,16 +1,16 @@
 from django.db import models
 from dqmodel.models import DQModel
-from contextmodel.models import ContextModel
 from django.core.exceptions import ValidationError
-from django.db import models
-
 from django.contrib.auth.models import AbstractUser, Group, Permission
-from django.db import models
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from django.db.models.signals import post_save
+import psycopg2
 
 
+# ---------------------------------------------------------------
+# Modelo de Usuario
+# ---------------------------------------------------------------
 class User(AbstractUser):
     type = models.CharField(max_length=50, blank=True)
     description = models.TextField(blank=True)
@@ -30,23 +30,20 @@ class User(AbstractUser):
 # ---------------------------------------------------------------
 # Data At Hand & Data Schema
 # ---------------------------------------------------------------
-#def validate_database_type(value):
-#    """
-#    Valida que el tipo de base de datos sea soportado.
-#    Tipos soportados: postgresql, mysql, sqlite, oracle
-#    """
-#    supported_types = ['postgresql', 'mysql', 'sqlite', 'oracle']
-#    if value not in supported_types:
-#        raise ValidationError(f"Unsupported database type: {value}. Supported types are: {', '.join(supported_types)}")
-
-
-import psycopg2
-
 class DataAtHand(models.Model):
     """
     Modelo que representa una conexión a una base de datos.
     Almacena los parámetros de conexión y metadatos.
     """
+    DB_TYPES = (
+        ('postgresql', 'PostgreSQL'),
+        ('mysql', 'MySQL'),
+        ('sqlite', 'SQLite'),
+        ('oracle', 'Oracle'),
+        ('mssql', 'SQL Server'),
+        ('other', 'Other'), 
+    )
+    
     name = models.CharField(max_length=255, verbose_name="Database Name")
     description = models.TextField(
         blank=True,
@@ -59,27 +56,15 @@ class DataAtHand(models.Model):
         verbose_name="Database Date",
         help_text="Fecha real cuando se creó la base de datos (no cuando se registró aquí)"
     )
-    
     url_db = models.CharField(max_length=255, verbose_name="Database URL or Host")
     user_db = models.CharField(max_length=255, verbose_name="Database User")
     pass_db = models.CharField(max_length=255, verbose_name="Database Password")
-    
     port = models.IntegerField(
         default=5432, # PostgreSQL default port 
         blank=True,
         null=True,
         verbose_name="Port"
     )
-    
-    DB_TYPES = (
-        ('postgresql', 'PostgreSQL'),
-        ('mysql', 'MySQL'),
-        ('sqlite', 'SQLite'),
-        ('oracle', 'Oracle'),
-        ('mssql', 'SQL Server'),
-        ('other', 'Other'), 
-    )
-
     type = models.CharField(
         max_length=50,
         choices=DB_TYPES,
@@ -94,6 +79,7 @@ class DataAtHand(models.Model):
         return f"{self.name} ({self.type})"
 
     def create_initial_schema(self):
+        """Crea el esquema inicial para la base de datos"""
         try:
             connection = psycopg2.connect(
                 dbname=self.name,
@@ -114,9 +100,7 @@ class DataAtHand(models.Model):
             DataSchema.objects.create(data_at_hand=self, schema={})
 
     def get_tables_info(self, connection):
-        """
-        Retrieve detailed information about tables in the database.
-        """
+        """Obtiene información detallada de las tablas en la base de datos"""
         cursor = connection.cursor()
         cursor.execute("""
             SELECT 
@@ -134,9 +118,7 @@ class DataAtHand(models.Model):
         return tables
     
     def get_database_schema(self, connection):
-        """
-        Retrieve database schema as a structured list of tables with columns.
-        """
+        """Obtiene el esquema de la base de datos como una lista estructurada"""
         try:
             tables = self.get_tables_info(connection)
             schema = []
@@ -147,7 +129,6 @@ class DataAtHand(models.Model):
                 
                 columns = self.get_table_columns_enhanced(connection, table_name)
                 
-                # Create structured table information
                 table_data = {
                     "table_id": table_id,
                     "table_name": table_name,
@@ -162,9 +143,7 @@ class DataAtHand(models.Model):
             raise e
 
     def get_table_columns_enhanced(self, connection, table_name):
-        """
-        Retrieve enhanced column information for a specific table.
-        """
+        """Obtiene información mejorada de columnas para una tabla específica"""
         cursor = connection.cursor()
         cursor.execute("""
             SELECT
@@ -199,10 +178,7 @@ class DataAtHand(models.Model):
             })
         
         return columns
-
-
-
-        
+ 
         
 class DataSchema(models.Model):
     """
@@ -214,7 +190,6 @@ class DataSchema(models.Model):
         on_delete=models.CASCADE,
         related_name='data_schema'
     )
-    
     schema = models.JSONField()  
     
     class Meta:
@@ -224,19 +199,17 @@ class DataSchema(models.Model):
         return f"Schema for {self.data_at_hand.name}"
 
 
-
 # ---------------------------------------------------------------
-# Project
+# Modelos de Proyecto y Etapas
 # ---------------------------------------------------------------
 class Project(models.Model):
-    class Meta:
-        #unique_together = ('context', 'dqmodel_version')
-        db_table = "project"
-    
+    """
+    Modelo principal que representa un proyecto para la ejecucion de la herramienta.
+    Se utiliza en las Fases 1 y 2 de la Metodologia CaDQM
+    """    
     name = models.CharField(max_length=255)
     description = models.TextField() 
     created_at = models.DateTimeField(auto_now_add=True)
-    # updated_at = models.DateTimeField(auto_now_add=True) 
     
     dqmodel_version = models.ForeignKey(
         DQModel, 
@@ -244,11 +217,6 @@ class Project(models.Model):
         null=True,
         blank=True
     )
-
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="projects", null=True, blank=True)
-    
-    #context_version = models.IntegerField(null=True, blank=True) # DEFINICION ANTERIOR
     context = models.ForeignKey(
         "Context",
         on_delete=models.SET_NULL,
@@ -256,9 +224,19 @@ class Project(models.Model):
         blank=True,
         related_name="projects",
     )
-      
-    data_at_hand = models.ForeignKey(DataAtHand, on_delete=models.CASCADE, null=True, blank=True)
-    
+    data_at_hand = models.ForeignKey(
+        DataAtHand, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name="projects", 
+        null=True, 
+        blank=True
+    )
     estimation = models.OneToOneField(
         "Estimation",
         on_delete=models.SET_NULL,
@@ -266,6 +244,10 @@ class Project(models.Model):
         blank=True,
         related_name="project",
     )
+    
+    class Meta:
+        #unique_together = ('context', 'dqmodel_version')
+        db_table = "project"
 
     def __str__(self):
         return self.name
@@ -283,13 +265,12 @@ class Project(models.Model):
             
     def initialize_stages(self):
         """
-        Crea las 6 etapas del proyecto al crearlo:
-        - ST1, ST2 y ST3 con status DONE (como si ya estuvieran completados)
+        Inicializa las 6 Etapas del Proyecto al crearlo:
+        - ST1, ST2 y ST3 con status DONE (se asumen completados)
         - ST4, ST5 y ST6 con status TO_DO
         - ST4 es la etapa activa inicial
         """
         for stage_value in ProjectStage.Stage.values:
-            # Definir el status según la etapa
             if stage_value in ['ST1', 'ST2', 'ST3']:
                 status = ProjectStage.Status.DONE
             else:
@@ -333,11 +314,9 @@ class Project(models.Model):
 
 
 class ProjectStage(models.Model):
-    class Meta:
-        db_table = "project_stage"
-        unique_together = ('project', 'stage')
-        ordering = ['stage']
-
+    """
+    Modelo que representa las etapas de un proyecto
+    """
     class Stage(models.TextChoices):
         ST1 = "ST1", _("ST1")
         ST2 = "ST2", _("ST2")
@@ -363,12 +342,17 @@ class ProjectStage(models.Model):
         default=Status.TO_DO
     )
     
+    class Meta:
+        db_table = "project_stage"
+        unique_together = ('project', 'stage')
+        ordering = ['stage']
+    
     def __str__(self):
         return f"{self.project.name} - {self.get_stage_display()} ({self.get_status_display()})"
 
 
 # ---------------------------------------------------------------
-# Context
+# Modelos de Contexto
 # ---------------------------------------------------------------
 class Context(models.Model):
     class Meta:
@@ -521,11 +505,9 @@ class UserData(models.Model):
     )
 
 
-
 # ---------------------------------------------------------------
 # DQ Problems
 # ---------------------------------------------------------------
- 
 class QualityProblem(models.Model):
     class Meta:
         db_table = "quality_problem"
@@ -536,12 +518,18 @@ class QualityProblem(models.Model):
 
 
 class PriorityType(models.TextChoices):
+    """
+    Opciones de prioridad para Problmas de Calidad.
+    """
     HIGH = 'High', 'High'
     MEDIUM = 'Medium', 'Medium'
     LOW = 'Low', 'Low'
 
 
 class QualityProblemProject(models.Model):
+    """
+    Representa un Problema de Calidad asociado a un Proyecto con prioridad.
+    """
     class Meta:
         db_table = "quality_problem_project"
         unique_together = ("quality_problem", "project")
@@ -550,33 +538,18 @@ class QualityProblemProject(models.Model):
         QualityProblem,
         on_delete=models.CASCADE,
         related_name="problem_projects",
-        #db_column="dq_problem_id"  
     )
     project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="project_problems"
+        Project, on_delete=models.CASCADE, 
+        related_name="project_problems"
     )
-    priority = models.CharField(max_length=10, choices=PriorityType.choices, default=PriorityType.MEDIUM)
-    is_selected = models.BooleanField(default=False)
-
-
-
-# PRIORITIZED DQ PROBLEMS
-
-#class PrioritizedDQProblem(models.Model):
- #   dq_problem_id = models.IntegerField() 
     
- #   project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True, related_name='prioritized_dq_problems', db_column='project_id')
-#
-#    priority = models.CharField(max_length=10, choices=PriorityType.choices, default=PriorityType.MEDIUM)
-#    
-#    is_selected = models.BooleanField(default=False)  # if added to DQ Model
-
-#    def __str__(self):
-#        return f"Prioritized DQ Problem {self.id} (Priority: {self.priority}, Selected: {self.is_selected})"
+    priority = models.CharField(max_length=10, choices=PriorityType.choices, default=PriorityType.MEDIUM)
+    is_selected = models.BooleanField(default=False) 
 
 
 # ---------------------------------------------------------------
-# Phase 1 only 
+# Modelos específicos de Fase 1
 # ---------------------------------------------------------------
 class Review(models.Model):
     class Meta:
@@ -604,6 +577,7 @@ class Review(models.Model):
         "QualityProblem", related_name="related_reviews", blank=True
     )
     rejected_suggestions = models.TextField(blank=True, null=True)
+
 
 class DataProfiling(models.Model):
     class Meta:

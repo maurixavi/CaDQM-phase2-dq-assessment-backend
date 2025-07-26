@@ -1,8 +1,6 @@
-# Standard library imports
 import json
 import os
 
-# Third-party imports
 import psycopg2
 import requests
 from django.conf import settings
@@ -10,17 +8,17 @@ from django.core.exceptions import ImproperlyConfigured
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from rest_framework import status, viewsets
+#from rest_framework import serializers
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
-# Local application imports
 from .models import (
-    
     DataAtHand,
     DataSchema,
-    # PrioritizedDQProblem,
     Project,
-    #ContextModel,
+    Context,
     ContextComponent,
     ApplicationDomain,
     BusinessRule,
@@ -39,7 +37,6 @@ from .models import (
 from .serializer import (
     DataAtHandSerializer,
     DataSchemaSerializer,
-    #PrioritizedDqProblemSerializer,
     ProjectSerializer,
     ContextSerializer,
     ContextComponentSerializer,
@@ -56,25 +53,12 @@ from .serializer import (
     UserDataSerializer,
     QualityProblemSerializer,
     QualityProblemProjectSerializer
-    
 )
 
-from rest_framework import serializers
 
-
-##### CONTEXT COMPONENTS
-
-from rest_framework import viewsets
-from .models import Context
-#from .serializers import ContextSerializer
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.shortcuts import get_object_or_404
-
-
-# DQ PROBLEMS -------------------------
+# ==============================================
+# Quality Problems Views
+# ==============================================
 
 class QualityProblemViewSet(viewsets.ModelViewSet):
     queryset = QualityProblem.objects.all()
@@ -100,10 +84,6 @@ class QualityProblemProjectViewSet(viewsets.ModelViewSet):
         project = get_object_or_404(Project, id=project_id)
         serializer.save(project=project)
 
-
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 
 @api_view(['GET'])
 def quality_problems_by_project(request, project_id):
@@ -147,7 +127,8 @@ def get_selected_prioritized_quality_problems_by_project(request, project_id):
         {"detail": "No selected prioritized quality problems found for this Project"},
         status=status.HTTP_404_NOT_FOUND
     )
-  
+
+
 @api_view(['POST'])
 def copy_problems_from_project(request, source_project_id, target_project_id):
     """
@@ -191,7 +172,9 @@ def copy_problems_from_project(request, source_project_id, target_project_id):
     )
 
     
-# CONTEXT COMPONENTS ---------------------
+# ==============================================
+# Context Components Views
+# ==============================================
 
 def filter_by_model(queryset, model_class):
     return [obj for obj in queryset if isinstance(obj, model_class)]
@@ -288,9 +271,6 @@ class UserDataViewSet(viewsets.ModelViewSet):
     queryset = UserData.objects.all()
     serializer_class = UserDataSerializer
 
-##-----------------------
-
-
 
 # ==============================================
 # Project Related Views
@@ -304,7 +284,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def update_stage_status(self, request, pk=None):
         project = self.get_object()
         stage_code = request.data.get('stage')
-        new_status = request.data.get('status')  # 'TO_DO', 'IN_PROGRESS' o 'DONE'
+        new_status = request.data.get('status')
 
         if not stage_code or not new_status:
             return Response(
@@ -333,7 +313,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             "new_status": new_status
         })
     
-    # Método para obtener proyectos por dqmodel_version
     @action(detail=False, methods=['get'], url_path='by-dqmodel')
     def get_by_dqmodel(self, request):
         dqmodel_version_id = request.query_params.get('dqmodel_version')
@@ -378,20 +357,7 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         instance = serializer.save()
-        instance.create_initial_schema()  # Llamás a un método del modelo ya guardado
-        
-    #def perform_create(self, serializer):
-    #    instance = serializer.save()
-    #    instance.create_initial_schema()
-    
-    #def save(self, *args, **kwargs):
-    #    created = not self.pk  # Verifica si es una nueva instancia
-    #    super().save(*args, **kwargs)
-    #    
-    #    if created:
-    #        self.create_initial_schema()
-
-    
+        instance.create_initial_schema() 
     
     def get_queryset(self):
         """
@@ -584,125 +550,9 @@ class DataAtHandViewSet(viewsets.ModelViewSet):
         return columns
 
 
-
 class DataSchemaViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing DataSchema instances.
     """
     queryset = DataSchema.objects.all()
     serializer_class = DataSchemaSerializer
-    
-
-
-# --------------------------------
-
-
-# ==============================================
-# PROBLEMAS DE CALIDAD (VERSION PREVIA)
-# ==============================================
-
-def load_dq_problems_dataset():
-    """
-    Load and return the predefined dataset of DQ problems from a JSON file.
-    """
-    file_path = os.path.join(os.path.dirname(__file__), 'dq_problems_dataset.json')  
-    
-    try:
-        with open(file_path, 'r') as json_file:
-            data = json.load(json_file)
-        return JsonResponse(data, safe=False)
-    
-    except FileNotFoundError:
-        return JsonResponse({"error": "Archivo no encontrado"}, status=404)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
-
-
-#def get_project_dq_problems(request, project_id):
-#    """
-#    Get DQ problems associated with a specific project.
-#    Currently returns the static JSON dataset.
-#    """
-#    project = get_object_or_404(Project, id=project_id)
-#    file_path = os.path.join(os.path.dirname(__file__), 'dq_problems_dataset.json')
-#    
-#    try:
-#        with open(file_path, 'r') as json_file:
-#            data = json.load(json_file)
-#        return JsonResponse(data, safe=False)
-#    except FileNotFoundError:
-#        return JsonResponse({"error": "Archivo no encontrado"}, status=404)
-#    except Exception as e:
-#        return JsonResponse({"error": str(e)}, status=500)
-
-
-#def get_dq_problem_by_id(request, project_id, problem_id):
-#    """
-#    Get a specific DQ problem by its ID from the dataset.
-#    """
-#    file_path = os.path.join(os.path.dirname(__file__), 'dq_problems_dataset.json')
-#    
-#    try:
-#        with open(file_path, 'r') as json_file:
-#            data = json.load(json_file)
-        
-#        problem = next((item for item in data if item["id"] == problem_id), None)
-#        
-#        if problem:
-#            return JsonResponse(problem, safe=False)
-#        return JsonResponse({"error": "Problema no encontrado"}, status=404)
-    
-#    except FileNotFoundError:
-#        return JsonResponse({"error": "Archivo no encontrado"}, status=404)
-#    except Exception as e:
-#        return JsonResponse({"error": str(e)}, status=500)
-
-
-
-#class PrioritizedDQProblemViewSet(viewsets.ModelViewSet):
-#    serializer_class = PrioritizedDqProblemSerializer
-
-#    def get_queryset(self):
-#        """
-#        Filter prioritized problems by project_id
-#        """
-#        queryset = PrioritizedDQProblem.objects.all()
-#        project_id = self.kwargs.get('project_id')
-#        if project_id:
-#            queryset = queryset.filter(project_id=project_id)
-#        return queryset
-    
-    
-#    def partial_update(self, request, *args, **kwargs):
-#        """
-#        Handle PATCH requests for partial updates.
-#        """
-#        instance = self.get_object()
-#        serializer = self.get_serializer(instance, data=request.data, partial=True)
-#        serializer.is_valid(raise_exception=True)
-#        serializer.save()
-#        return Response(serializer.data)
-
-
-#@api_view(['GET'])
-#def get_selected_prioritized_dq_problems_by_project(request, project_id):
-#    """
-#    Get only selected (is_selected=True) prioritized DQ problems for a project.
-#    """
-#    project = get_object_or_404(Project, pk=project_id)
-#    selected_problems = PrioritizedDQProblem.objects.filter(
-#        project=project, 
-#        is_selected=True
-#    )
-
-#    if selected_problems.exists():
-#        serializer = PrioritizedDqProblemSerializer(selected_problems, many=True)
-#        return Response(serializer.data, status=status.HTTP_200_OK)
-
-#    return Response(
-#        {"detail": "No selected prioritized problems found for this Project"},
-#        status=status.HTTP_404_NOT_FOUND
-#    )
-
-

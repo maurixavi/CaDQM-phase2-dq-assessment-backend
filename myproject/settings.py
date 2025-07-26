@@ -43,11 +43,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'coreapi',
-    'dataqualitymodel',
     'project',
     'dqmodel',
-    #'metadata',
-    'contextmodel',
     'django_extensions'
 ]
 
@@ -91,8 +88,9 @@ DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'cadqmFase1',
+        #'NAME': 'cadqmFase1',
         #'NAME': 'cadqm_restore', 
+        'NAME': 'cadqm_backend', 
         "USER": "postgres",
         "PASSWORD": "password",
         "HOST": "localhost",
@@ -169,4 +167,4 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
 }
 
-BASE_URL = 'http://localhost:8000' 
+BASE_URL = 'http://localhost:8001' 

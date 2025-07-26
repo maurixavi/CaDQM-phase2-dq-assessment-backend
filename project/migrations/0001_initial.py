@@ -9,8 +9,6 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('contextmodel', '__first__'),
-        ('dataqualitymodel', '0001_initial'),
     ]
 
     operations = [
