@@ -50,27 +50,28 @@ CREATE DATABASE cadqm_dqmetadata_db;
 
 ### 2. Configurar `settings.py`
 
-Asegurate de tener en tu archivo `settings.py` algo como:
+El archivo `settings.py`, ubicado en el directorio `myproject/`, ya incluye la estructura necesaria para conectar con PostgreSQL mediante dos bases de datos:
 ```python
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'cadqm_db',
-        'USER': 'dq_user',
-        'PASSWORD': 'dq_password',
+        'USER': 'your_user',
+        'PASSWORD': 'your_password',
         'HOST': 'localhost',
         'PORT': '5432',
     },
     'metadata_db': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'cadqm_dqmetadata_db',
-        'USER': 'dq_user',
-        'PASSWORD': 'dq_password',
+        'USER': 'your_user',
+        'PASSWORD': 'your_password',
         'HOST': 'localhost',
         'PORT': '5432',
     }
 }
 ```
+Asegúrate de actualizar y completar los campos de conexión con los datos reales de tu entorno: nombre de base de datos, usuario, contraseña, host y puerto de PostgreSQL.
 
 ---
 
