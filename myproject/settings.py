@@ -90,7 +90,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         #'NAME': 'cadqmFase1',
         #'NAME': 'cadqm_restore', 
-        'NAME': 'cadqm_backend', 
+        'NAME': 'cadqm_backend_db',  #DESDE CERO
+        #'NAME': 'cadqm_backend', 
         "USER": "postgres",
         "PASSWORD": "password",
         "HOST": "localhost",
@@ -98,7 +99,9 @@ DATABASES = {
     },
     'metadata_db': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'metadata_db',
+        #'NAME': 'metadata_db',
+        #'NAME': 'cadqm_backend_metadata_db',
+        'NAME': 'cadqm_metadata_db',
         'USER': 'postgres',
         'PASSWORD': 'password',
         'HOST': 'localhost',
