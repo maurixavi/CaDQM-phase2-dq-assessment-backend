@@ -646,14 +646,7 @@ class DQModelViewSet(viewsets.ModelViewSet):
 
             # 2. Conectar a la base de datos y ejecutar
             try:
-                #conn = psycopg2.connect(
-                #    dbname='data_at_hand_v01',
-                #    user='postgres',
-                #    password='password',
-                #    host='localhost',
-                #    port=5432
-                #)
-                #debug_info.append("Conexión a PostgreSQL establecida")
+                debug_info.append("Conexión a PostgreSQL establecida")
                 
                 raw_config = request.data.get("connection_config", {})
 
@@ -663,12 +656,13 @@ class DQModelViewSet(viewsets.ModelViewSet):
                         {"error": "Faltan datos de conexión en connection_config"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
-
-                # Obtiene solo lo necesario para psycopg2
+                
                 conn_config = {
-                    key: raw_config[key]
-                    for key in ["name", "user_db", "pass_db", "url_db", "port"]
-                    if key in raw_config
+                    'dbname': raw_config.get('name'),
+                    'user': raw_config.get('user_db'),
+                    'password': raw_config.get('pass_db'),
+                    'host': raw_config.get('url_db'),
+                    'port': raw_config.get('port')
                 }
 
                 conn = psycopg2.connect(**conn_config)

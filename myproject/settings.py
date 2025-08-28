@@ -88,9 +88,10 @@ DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'cadqm_db_fases_1_2',
         #'NAME': 'cadqmFase1',
         #'NAME': 'cadqm_restore', 
-        'NAME': 'cadqm_backend_db',  #DESDE CERO
+        #'NAME': 'cadqm_backend_db',  #DESDE CERO
         #'NAME': 'cadqm_backend', 
         "USER": "postgres",
         "PASSWORD": "password",
@@ -101,7 +102,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         #'NAME': 'metadata_db',
         #'NAME': 'cadqm_backend_metadata_db',
-        'NAME': 'cadqm_metadata_db',
+        'NAME': 'dq_metadata_cadqm',
+        #'NAME': 'cadqm_metadata_db',
         'USER': 'postgres',
         'PASSWORD': 'password',
         'HOST': 'localhost',
@@ -170,4 +172,4 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
 }
 
-BASE_URL = 'http://localhost:8001' 
+BASE_URL = 'http://localhost:8000' 
