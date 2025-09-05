@@ -152,16 +152,6 @@ La aplicación estará disponible en `http://127.0.0.1:8000/` o `http://localhos
 
 ---
 
-## Ejecución de la aplicación
-
-```bash
-python manage.py runserver
-```
-
-La aplicación estará disponible en `http://127.0.0.1:8000/` o `http://localhost:8000/`
-
----
-
 ## Carga Artefactos Base Predefinidos (Opcional)
 
 ### Definición de Templates con conceptos de CD
