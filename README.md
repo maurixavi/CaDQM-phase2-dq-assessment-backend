@@ -33,6 +33,7 @@ pip install -r requirements.txt
 
 ---
 
+
 ## Configuración de la base de datos PostgreSQL
 
 ### 1. Crear base de datos y usuarios
@@ -71,11 +72,11 @@ DATABASES = {
     }
 }
 ```
-Asegúrate de actualizar y completar los campos de conexión con los datos reales de tu entorno: nombre de base de datos, usuario, contraseña, host y puerto de PostgreSQL.
+Asegurarse de actualizar y completar los campos de conexión con los datos reales del entorno de trabajo: nombre de base de datos, usuario, contraseña, host y puerto de PostgreSQL.
 
 ---
 
-## Migraciones y carga inicial
+## Migraciones y Carga inicial de Datos
 
 ### 1. Orden de las migraciones
 
@@ -103,7 +104,23 @@ python manage.py migrate project 0001
 python manage.py admin
 ```
 
-### 2. Crear superusuario (opcional para admin)
+### 3. Carga Inicial de Datos (Obligatorio)
+
+El sistema requiere una carga inicial de un conjunto dimensiones y factores de calidad de datos predefinidos.
+Este paso es REQUERIDO para el funcionamiento adecuado de la aplicación.
+
+```bash
+# Ejecutar (ubicado en el directorio raíz del proyecto backend) la carga inicial de dimensiones y factores base 
+python manage.py load_dqtemplate --template preset_dq_dimensions_factors_base
+```
+
+**¿Qué carga este comando?**
+- Definición de las dimensiones: Accuracy, Completeness, Consistency, Uniqueness, Freshness
+- Factores de calidad asociados a cada dimensión.
+Sin esta carga inicial, la aplicación no tendrá los conceptos de CD básicos necesarios para todas las funcionalidades de la aplicación, requeridos para la generación de recomendaciones con IA. Las definiciones se basan en el Curso de Calidad de Datos (Facultad de Ingeniería, UdelaR), y se cargar a traves del archivo preset_dq_dimensions_factors_base.md ubicado en el directorio `dqmodel/templates/definitions/`
+
+
+### 4. Crear superusuario (opcional para admin)
 ```bash
 python manage.py createsuperuser
 ```
@@ -120,3 +137,85 @@ La aplicación estará disponible en `http://127.0.0.1:8000/` o `http://localhos
 
 ---
 
+## Carga Artefactos Base Predefinidos (Opcional)
+
+### Definición de Templates con conceptos de CD
+
+Adicionalmente, el sistema ofrece la posibilidad de cargar artefactos, correspondientes a conceptos de calidad de datos (dimensiones, factores, métricas y métodos) predefinidos en forma de templates que pueden ser reutilizados en múltiples proyectos de calidad de datos. Esto permite iniciar la aplicación con un repositorio de conceptos de CD predefinidos disponibles, para agilizar la construcción de modelos de CD mediante su selección.
+
+Un template consiste en un archivo de tipo markdown (.md) definido manualmente por el usuario siguiendo la siguiente estructura y formato, asegurando el cumplimiento de la jerarquía de los conceptos de CD:
+
+```
+## DQ Dimension: [Nombre de la Dimensión]
+**Semantic:** [Descripción semántica de la dimensión]
+
+### DQ Factor: [Nombre del Factor]  
+**Semantic:** [Descripción semántica del factor]
+**Facet of (DQ Dimension):** [Nombre de la Dimensión padre]
+
+#### DQ Metric: [Nombre de la Métrica]  
+**Purpose:** [Propósito de la métrica]  
+**Granularity:** [Nivel de granularidad]  
+**Result Domain:** [Dominio del resultado]  
+**Measures (DQ Factor):** [Nombre del Factor padre]
+
+##### DQ Method: [Nombre del Método]
+**Name:** [Nombre del método]  
+**Input data type:** [Tipo de dato de entrada]
+**Output data type:** [Tipo de dato de salida]  
+**Algorithm:**  
+	[código o descripción del algoritmo]
+**Implements (DQ Metric):** [Nombre de la Métrica padre]
+```
+
+**Ejemplo especifico:**
+```
+## DQ Dimension: Completeness
+**Semantic:** Refers to the availability of all necessary data, ensuring that no important data is missing for analysis or decision-making.
+
+### DQ Factor: Density  
+**Semantic:** Describes the proportion of actual data entries compared to the total number of expected entries.
+**Facet of (DQ Dimension):** Completeness
+
+#### DQ Metric: Value Density Ratio  
+**Purpose:** Proportion of non-null values relative to the total number of expected values.  
+**Granularity:** Table  
+**Result Domain:** [0, 1]  
+**Measures (DQ Factor):** Density
+
+#### DQ Metric: Non-Null Values Ratio  
+**Purpose:** Proportion of non-null values in a column relative to its total number of expected values.  
+**Granularity:** Column  
+**Result Domain:** [0, 1]  
+**Measures (DQ Factor):** Density
+
+##### DQ Method: calculateNonNullValuesRatio
+**Name:** calculateNonNullValuesRatio  
+**Input data type:** Column<any>
+**Output data type:** Float  
+**Algorithm:**  
+	```sql
+	SELECT 
+    SUM(CASE WHEN {{column_name}} IS NOT NULL THEN 1 ELSE 0 END) * 1.0 
+    / COUNT(*) AS non_null_ratio
+  FROM 
+    {{table_name}};
+	```
+**Implements (DQ Metric):** Non-Null Values Ratio
+```
+
+**Observaciones:**
+- Estos templates deben ser ubicados en el directorio `dqmodel/templates/definitions/`.
+- En el comando de carga, se debe especificar el nombre del archivo sin la extensión .md (`python manage.py load_dqtemplate --template <nombre_archivo_template>`)
+- Para extender el repositorio de artefactos de calidad base, no es necesario definir en el archivo nuevamente toda la jerarquia desde las dimensiones, pero sí es requerido que todo concepto debe respetar la jerarquia incluyendo correctamente el nombre del concepto de CD que lo antecede.
+- La estructura con encabezados markdown (##, ###, ####, #####) ayuda visualmente a respetar la jerarquia y es utilizada por el parser para identificar el nivel de cada concepto.
+- Si encuentra conceptos ya existentes en la base de datos se incluye un control de no cargar repetidos.
+
+
+### Carga de Template Extendido (Opcional)
+Como soporte adicional para la herramienta, se proporciona un template extendido (`preset_dqmodel_template.md`) que incluye dimensiones y factores (de carga obligatoria), y además métricas genéricas y métodos de calidad predefinidos. Este template ofrece un conjunto completo de artefactos de calidad de datos listos para usar, incluyendo métricas clásicas y definiciones genéricas que cubren los principales factores de calidad. El archivo se encuentra ubicado en `dqmodel/templates/definitions/` y puede ser modificado para adaptarse a necesidades específicas.
+
+Carga del template extendido:
+```bash
+python manage.py load_dqtemplate --template dqconcepts_template
+```
