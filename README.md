@@ -219,3 +219,38 @@ Carga del template extendido:
 ```bash
 python manage.py load_dqtemplate --template dqconcepts_template
 ```
+
+---
+
+## Estructura del proyecto
+
+```
+project-root/
+├── manage.py # Punto de entrada servidor Django
+├── README.md
+├── requirements.txt
+│
+├── dqmodel/ # App dedicada a definición y ejecución de Modelos de CD
+│ ├── ai_modules/ # Módulos de IA (recomendación/generación)
+│ ├── management/ # Comandos de Django personalizados
+│ └── templates/ # Plantillas base y loaders
+│ │ └── definitions/ # Plantillas con conceptos de CD base  
+│ │ └── loaders/ # Procesamiento y carga de plantillas a BD
+│ ├── migrations/ # Migraciones de Django
+│
+├── project/ # App: gestión de Proyectos y flujo metodológico CaDQM
+│ ├── (models, views, signals, urls etc.)
+│ ├── migrations/
+│
+└── myproject/ # Configuración principal de Django
+├── settings.py
+├── urls.py
+├── wsgi.py
+├── asgi.py
+└── MetadataRouter.py # Router de bases de datos Metadata
+```
+
+**Resumen:**
+- `dqmodel/` → define los conceptos de calidad (dimensiones, factores, métricas, métodos) y su ejecución.  
+- `project/` → gestiona los **Proyectos** y articula contexto, problemas de calidad y datos fuente; referencia directamente a `dqmodel/`.  
+- `myproject/` → configuración central del servidor Django (multi-DB, routers, CORS, etc.).  
