@@ -127,6 +127,31 @@ python manage.py createsuperuser
 
 ---
 
+## Configuración de variables de entorno
+
+ara poder ejecutar las funciones de la aplicación mediante IA, para la recomendación y generación automática de contenido, se requiere una clave de acceso a la API de [Groq](https://console.groq.com/docs/overview), una plataforma de inferencia que permite ejecutar modelos de lenguaje (LLM) de manera optimizada y eficiente.
+
+Dentro del archivo .env debe configurarse la variable correspondiente a la clave de la API de Groq:
+
+`GROQ_API_KEY=tu_api_key_aqui`
+
+Para obtener una API Key:
+  1. Acceder a https://console.groq.com/keys
+  2. Crear una cuenta (gratuita) en caso de no disponer de una.
+  3. Generar una nueva API Key y copiarla.
+
+---
+
+## Ejecución de la aplicación
+
+```bash
+python manage.py runserver
+```
+
+La aplicación estará disponible en `http://127.0.0.1:8000/` o `http://localhost:8000/`
+
+---
+
 ## Ejecución de la aplicación
 
 ```bash
