@@ -16,13 +16,8 @@ from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-czmvg#c3$6ek*cb3_uc*-g83%x4hvq+ow^6sr0iitef+ph-buk'
-
 GROQ_API_KEY = config('GROQ_API_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -30,22 +25,25 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
-
 INSTALLED_APPS = [
+    # Django apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Third-party apps
     'corsheaders',
     'rest_framework',
     'coreapi',
+    'django_extensions',
+    
+    # Local apps
     'project',
-    'dqmodel',
-    'django_extensions'
+    'dqmodel', 
 ]
 
 MIDDLEWARE = [
@@ -79,20 +77,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'myproject.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-# DATABASE_ROUTERS = ['myproject.ContextRouter.ContextRouter']
+# ---------------------------------------------------------------
+# Database Configuration
+# ---------------------------------------------------------------
 DATABASE_ROUTERS = ['myproject.MetadataRouter.MetadataRouter']
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'cadqm_db_fases_1_2',
-        #'NAME': 'cadqmFase1',
-        #'NAME': 'cadqm_restore', 
-        #'NAME': 'cadqm_backend_db',  #DESDE CERO
-        #'NAME': 'cadqm_backend', 
+        'ENGINE': 'django.db.backends.postgresql',        
+        'NAME': 'cadqm_app_db',
         "USER": "postgres",
         "PASSWORD": "password",
         "HOST": "localhost",
@@ -100,31 +93,20 @@ DATABASES = {
     },
     'metadata_db': {
         'ENGINE': 'django.db.backends.postgresql',
-        #'NAME': 'metadata_db',
-        #'NAME': 'cadqm_backend_metadata_db',
-        'NAME': 'dq_metadata_cadqm',
-        #'NAME': 'cadqm_metadata_db',
+        'NAME': 'cadqm_metadata_db',
         'USER': 'postgres',
         'PASSWORD': 'password',
         'HOST': 'localhost',
         'PORT': '5432',
-    }#,
-    #'context_model': {
-     #   'ENGINE': 'django.db.backends.postgresql',
-      #  'NAME': 'contextmodeldb',
-      #  'USER': 'postgres',
-      #  'PASSWORD': 'password',
-      #  'HOST': 'localhost',
-      #  'PORT': '5432',
-    #}
+    }
 }
 
-
+# ---------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------
 AUTH_USER_MODEL = 'project.User' 
 
-# Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
-
+# Password validation https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -141,26 +123,17 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
-
+# Internationalization https://docs.djangoproject.com/en/5.0/topics/i18n/
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
-
+# Static files (CSS, JavaScript, Images) https://docs.djangoproject.com/en/5.0/howto/static-files/
 STATIC_URL = 'static/'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
-
+# Default primary key field type https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
