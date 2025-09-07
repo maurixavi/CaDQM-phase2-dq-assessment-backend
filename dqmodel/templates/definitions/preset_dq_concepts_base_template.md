@@ -73,10 +73,8 @@
 **Measures (DQ Factor):** Coverage
 
 
-
 ## DQ Dimension: Consistency
 **Semantic:** Indicates the satisfaction of semantic rules defined on the data.
-**Facet of (DQ Dimension):** Consistency
 
 ### DQ Factor: Domain Integrity
 **Semantic:** Indicates whether individual attribute values comply with defined constraints, rules, or value domains.

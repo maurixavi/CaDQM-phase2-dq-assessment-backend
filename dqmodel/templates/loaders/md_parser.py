@@ -54,7 +54,7 @@ def normalize_sql_algorithm(sql_code):
 def extract_dimensions(markdown_text: str) -> List[Dict]:
     """Extrae dimensiones del texto Markdown."""
     pattern = re.compile(
-        r"## DQ Dimension: (.+?)\n\*\*Semantic:\*\* (.+?)(?=\n##|$)", 
+        r"## DQ Dimension: (.+?)\n\*\*Semantic:\*\* (.+?)(?=\n####|\n###|\n##|$)", 
         re.DOTALL
     )
     return [
@@ -65,7 +65,7 @@ def extract_dimensions(markdown_text: str) -> List[Dict]:
 def extract_factors(markdown_text: str) -> List[Dict]:
     """Extrae factores de calidad del texto Markdown."""
     pattern = re.compile(
-        r"### DQ Factor: (.+?)\n\*\*Semantic:\*\* (.+?)\n\*\*Facet of \(DQ Dimension\):\*\* (.+?)(?=\n###|$)",
+        r"### DQ Factor: (.+?)\n\*\*Semantic:\*\* (.+?)\n\*\*Facet of \(DQ Dimension\):\*\* (.+?)(?=\n####|\n###|\n##|$)",
         re.DOTALL
     )
     return [
@@ -96,7 +96,7 @@ def extract_metrics(markdown_text: str) -> List[Dict]:
 
 def extract_methods(markdown_text: str) -> List[Dict]:
     """Extrae métodos del texto Markdown."""
-    pattern = re.compile(r"##### DQ Method: (.+?)\n\*\*Input data type:\*\* (.+?)\n\*\*Output data type:\*\* (.+?)\n\*\*Algorithm:\*\*\s*```sql\n([\s\S]+?)\s*```.*?\n\*\*Implements \(DQ Metric\):\*\* (.+?)(?=\n#####|$)", re.DOTALL)
+    pattern = re.compile(r"##### DQ Method: (.+?)\n\*\*Input data type:\*\* (.+?)\n\*\*Output data type:\*\* (.+?)\n\*\*Algorithm:\*\*\s*```sql\n([\s\S]+?)\s*```.*?\n\*\*Implements \(DQ Metric\):\*\* (.+?)(?=\n####|\n###|\n##|$)", re.DOTALL)
     
     return [
         {

@@ -15,7 +15,6 @@
 **Semantic:** Refers to the level of detail in which data is captured or expressed.
 **Facet of (DQ Dimension):** Accuracy
 
-
 ## DQ Dimension: Completeness
 **Semantic:** Refers to the availability of all necessary data, ensuring that no important data is missing for analysis or decision-making.
 
@@ -30,7 +29,6 @@
 
 ## DQ Dimension: Consistency
 **Semantic:** Indicates the satisfaction of semantic rules defined on the data.
-**Facet of (DQ Dimension):** Consistency
 
 ### DQ Factor: Domain Integrity
 **Semantic:** Indicates whether individual attribute values comply with defined constraints, rules, or value domains.
