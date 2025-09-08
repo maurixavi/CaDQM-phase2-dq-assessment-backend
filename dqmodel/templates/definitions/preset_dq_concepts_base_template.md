@@ -49,16 +49,9 @@
 **Implements (DQ Metric):** Format Compliance Ratio
 
 
-
 ### DQ Factor: Precision
 **Semantic:** Refers to the level of detail in which data is captured or expressed.
 **Facet of (DQ Dimension):** Accuracy
-
-#### DQ Metric: Detail Level Ratio  
-**Purpose:** Proportion of data values captured with the required level of granularity or precision.  
-**Granularity:** Column  
-**Result Domain:** [0, 1]  
-**Measures (DQ Factor):** Precision
 
 #### DQ Metric: Decimal Precision Ratio
 **Purpose:** Measures the proportion of numeric values that have at least the required number of decimal places.
