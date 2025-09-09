@@ -514,10 +514,17 @@ python manage.py load_dqtemplate --template preset_dq_dimensions_factors_base
 Sin esta carga inicial, la aplicación no tendrá los conceptos de CD básicos necesarios para todas las funcionalidades de la aplicación, requeridos para la generación de recomendaciones con IA. Las definiciones se basan en el Curso de Calidad de Datos (Facultad de Ingeniería, UdelaR), y se cargar a traves del archivo preset_dq_dimensions_factors_base.md ubicado en el directorio `dqmodel/templates/definitions/`
 
 
-### 4. Crear superusuario (opcional para admin)
+## Panel Admin (Crear superusuario)
+
+El panel de administración de Django es una herramienta poderosa que permite gestionar los datos de la aplicación de forma sencilla. Desde aquí, es posible crear, modificar y eliminar cualquier elemento almacenado en la base de datos para los modelos que se han registrado en el panel de administración.
+
+Para acceder a este panel, primero se debe crear una cuenta de superusuario. Para ello, ejecuta el siguiente comando en la terminal:
+
 ```bash
 python manage.py createsuperuser
 ```
+Este panel se encuentra accesible en la dirección: `http://localhost:8000/admin`
+
 
 ---
 
